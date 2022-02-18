@@ -6,7 +6,7 @@
     "old_stage": "bootstrap",
     "ova_source": "output/archlinux-{{user `old_stage`}}-desktop-{{user `date`}}.01-x86_64.ova",
     "stage_files": "userbase,userbase-graphical",
-    "stage_cmd": "devenv cyber",
+    "stage_cmd": "--auto devenv cyber",
     "prov_user": "user",
     "prov_pass": "resu",
     "ova_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}.01-x86_64",

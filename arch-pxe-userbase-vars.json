@@ -7,7 +7,7 @@
     "old_stage": "userbase",
     "ova_source": "output/archlinux-{{user `old_stage`}}-desktop-{{user `date`}}.01-x86_64.ova",
     "stage_files": "package",
-    "stage_cmd": "/dev/sda \"\"",
+    "stage_cmd": "--auto /dev/sda \"\"",
     "prov_user": "root",
     "prov_pass": "toor",
     "ova_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}.01-x86_64",

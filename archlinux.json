@@ -161,33 +161,31 @@
     ],
     "provisioners": [
         {
-            "type": "file",
-            "content": "",
-            "destination": "/tmp/stdout.log"
-        },
-        {
-            "type": "file",
-            "content": "",
-            "destination": "/tmp/stderr.log"
+            "type": "shell",
+            "inline": [
+                "mkdir -p /tmp/auto",
+                "touch /tmp/auto/stdout.log",
+                "touch /tmp/auto/stderr.log"
+            ]
         },
         {
             "type": "file",
             "sources": "{{user `stage_files`}}",
-            "destination": "/tmp/"
+            "destination": "/tmp/auto/"
         },
         {
             "type": "shell",
             "inline": [
-                "echo building output/{{user `stage`}}/{{user `ova_name`}}.ova as user $(id -un)",
-                "echo command line: /tmp/{{user `stage`}} --auto {{user `stage_cmd`}}"
+                "echo \"building as user: $(id -un)\"",
+                "echo \"command line: /tmp/auto/{{user `stage`}} {{user `stage_cmd`}}\""
             ],
-            "pause_after": "5s"
+            "pause_after": "10s"
         },
         {
             "type": "shell",
             "inline": [
-                "chmod +x /tmp/{{user `stage`}}",
-                "/tmp/{{user `stage`}} --auto {{user `stage_cmd`}}"
+                "chmod +x /tmp/auto/{{user `stage`}}",
+                "/tmp/auto/{{user `stage`}} {{user `stage_cmd`}}"
             ]
         },
         {
@@ -202,10 +200,7 @@
         },
         {
             "type": "file",
-            "sources": [
-                "/tmp/stdout.log",
-                "/tmp/stderr.log"
-            ],
+            "source": "/tmp/auto/",
             "destination": "output/{{user `stage`}}/",
             "direction": "download"
         },

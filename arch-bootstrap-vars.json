@@ -5,7 +5,7 @@
     "headless": "true",
     "stage": "bootstrap",
     "stage_files": "bootstrap,bootstrap-partition,bootstrap-graphical,bootstrap-skel",
-    "stage_cmd": "/dev/sda \"\" toor user resu",
+    "stage_cmd": "--auto /dev/sda \"\" toor user resu",
     "prov_user": "root",
     "prov_pass": "toor",
     "ova_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}.01-x86_64",
