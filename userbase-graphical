@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# graphical environment configured in userbase
+#
+
+# wine first time startup
+wine wineboot -u
+tee "$HOME/.local/bin/wine32" <<EOF
+#!/usr/bin/env bash
+
+WINEPREFIX="\$HOME/.local/wine32" WINEARCH=win32 wine \$@
+EOF
+chmod +x "$HOME/.local/bin/wine32"
+WINEPREFIX="$HOME/.local/wine32" WINEARCH=win32 wine wineboot -u
+
+# set xdg-mime defaults
+xdg-mime default notepadqq.desktop 'text/plain'
+xdg-mime default notepadqq.desktop 'text/html'
+xdg-mime default notepadqq.desktop 'text/x-shellscript'
+xdg-mime default notepadqq.desktop 'application/json'
+xdg-mime default notepadqq.desktop 'text/xml'
+xdg-mime default notepadqq.desktop 'text/x-php'
+xdg-mime default notepadqq.desktop 'text/x-c'
+xdg-mime default notepadqq.desktop 'text/x-c++'
+xdg-mime default libreoffice-calc.desktop 'text/x-csv'
+xdg-mime default llpp.desktop 'application/pdf'
+xdg-mime default xarchiver.desktop 'application/gzip'
+xdg-mime default xarchiver.desktop 'application/x-7z-compressed'
+xdg-mime default xarchiver.desktop 'application/x-7z-compressed-tar'
+xdg-mime default xarchiver.desktop 'application/x-arj'
+xdg-mime default xarchiver.desktop 'application/x-bzip'
+xdg-mime default xarchiver.desktop 'application/x-bzip-compressed-tar'
+xdg-mime default xarchiver.desktop 'application/x-bzip1'
+xdg-mime default xarchiver.desktop 'application/x-bzip1-compressed-tar'
+xdg-mime default xarchiver.desktop 'application/x-cabinet'
+xdg-mime default xarchiver.desktop 'application/x-cd-image'
+xdg-mime default xarchiver.desktop 'application/x-compress'
+xdg-mime default xarchiver.desktop 'application/x-compressed-tar'
+xdg-mime default xarchiver.desktop 'application/x-cpio'
+xdg-mime default xarchiver.desktop 'application/x-deb'
+xdg-mime default xarchiver.desktop 'application/x-gtar'
+xdg-mime default xarchiver.desktop 'application/x-gzip'
+xdg-mime default xarchiver.desktop 'application/x-gzpostscript'
+xdg-mime default xarchiver.desktop 'application/x-lha'
+xdg-mime default xarchiver.desktop 'application/x-lhz'
+xdg-mime default xarchiver.desktop 'application/x-lzma'
+xdg-mime default xarchiver.desktop 'application/x-lzma-compressed-tar'
+xdg-mime default xarchiver.desktop 'application/x-ms-wim'
+xdg-mime default xarchiver.desktop 'application/x-rar'
+xdg-mime default xarchiver.desktop 'application/x-rar-compressed'
+xdg-mime default xarchiver.desktop 'application/x-rpm'
+xdg-mime default xarchiver.desktop 'application/x-tar'
+xdg-mime default xarchiver.desktop 'application/x-xz'
+xdg-mime default xarchiver.desktop 'application/x-xz-compressed-tar'
+xdg-mime default xarchiver.desktop 'application/x-zip'
+xdg-mime default xarchiver.desktop 'application/x-zip-compressed'
+xdg-mime default xarchiver.desktop 'application/zip'
+xdg-mime default xarchiver.desktop 'application/vnd.ms-cab-compressed'

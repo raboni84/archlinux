@@ -1,0 +1,448 @@
+#!/bin/bash
+# WARNING: this script will destroy all data on the selected disk.
+# It can be started by executing the following commands:
+#   curl -sL https://raw.githubusercontent.com/raboni84/arch/master/bootstrap > bootstrap
+#   chmod +x bootstrap
+#   ./bootstrapä
+
+set -uo pipefail
+set +o history
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+SCRIPT=`realpath "$0"`
+SCRIPTPATH=`dirname "$SCRIPT"`
+
+### Set up logging ###
+exec 1> >(tee "/tmp/stdout.log")
+exec 2> >(tee "/tmp/stderr.log")
+
+pacman_update_unsafe() {
+  pacman -Syy --needed --noconfirm --color=auto $@
+}
+partial_pacman_need_unsafe() {
+  while (( "$#" )); do
+    pacman -S --needed --noconfirm --color=auto --overwrite '*' $1
+    local deps=$(LC_ALL=C pacman -Si $1 2>/dev/null | grep 'Depends On' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
+    for pkg in $deps; do
+      local reqs=$(LC_ALL=C pacman -Sii $pkg 2>/dev/null | grep 'Required By' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
+      local explicit=$( ( pacman -Qqe; echo -e "$reqs" ) | sort | uniq -d )
+      pacman -S --needed --noconfirm --color=auto --overwrite '*' $explicit
+    done
+    shift
+  done
+}
+mnt_cmd() {
+  arch-chroot /mnt $@
+}
+mnt_pacman_update_unsafe() {
+  arch-chroot /mnt pacman -Syy --needed --noconfirm --color=auto $@
+}
+mnt_pacman_need() {
+  arch-chroot /mnt pacman -S --needed --noconfirm --color=auto $@
+}
+mnt_cmd_as_user() {
+  local asuser="$1"
+  shift
+  arch-chroot /mnt su - ${asuser} -c "$@"
+}
+
+# initialize root
+USER="$(id -un)"
+if [ ! "$EUID" -eq 0 ]; then
+  echo >&2 "Please run the script as root"
+  exit 1
+else
+  echo "Running as current user '$USER'"
+fi
+
+AUTO=""
+GRAPHICALENV="YES"
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    -a|--auto)
+      AUTO="YES"
+      device="$2"
+      data_password="$3"
+      root_password="$4"
+      user_name="$5"
+      user_password="$6"
+      shift
+      shift
+      shift
+      shift
+      shift
+      shift
+      echo "using device=$device, data_password=$data_password, root_password=$root_password, user_name=$user_name, user_password=$user_password"
+      ;;
+    -ng|--no-graphical-env)
+      GRAPHICALENV=""
+      shift
+      ;;
+    *)
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+### update system ###
+# get rid of reflector
+systemctl kill reflector || true
+systemctl stop reflector || true
+systemctl disable reflector
+# get arch mirrorlist
+curl -s 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_status=on' | \
+  sed -e 's/#Server/Server/g' | \
+  tee /etc/pacman.d/mirrorlist
+# resize tmpfs
+mount -o remount,size=80% /run/archiso/cowspace
+# update repo databases and install basic programs for setup
+pacman_update_unsafe archlinux-keyring
+partial_pacman_need_unsafe dialog lshw jq
+systemctl start vboxservice
+
+### set regionals for installation system ###
+sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen
+echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+rm /etc/localtime || true
+ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+hwclock --systohc --utc
+loadkeys de-latin1-nodeadkeys
+echo "KEYMAP=de-latin1-nodeadkeys" > /etc/vconsole.conf
+
+### final warning ###
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  if ! dialog --cr-wrap --yesno "WARNING: this script will destroy all data on the selected disk.\n\
+  Are you sure?" 10 50; then
+    clear
+    echo >&2 "aborted"
+    exit 1
+  fi
+  clear
+fi
+
+### partitioning steps ###
+[[ -f ${SCRIPTPATH}/bootstrap-partition ]] && . ${SCRIPTPATH}/bootstrap-partition || (
+  echo >&2 "no \"bootstrap-partition\" in ${SCRIPTPATH} directory"
+  exit 1
+)
+
+#### Install and configure the basic system ###
+echo "" | (pacstrap -i /mnt base sudo)
+
+# enable multilib, custom-user-repo and fix the /mnt mirrorlist
+sed -i '/^#\[multilib\]$/{N;s/^#\[multilib\]\n#Include.*/[multilib]\nInclude = \/etc\/pacman.d\/mirrorlist\/\n\n[aur]\nSigLevel = Optional DatabaseOptional\nServer = https:\/\/raboni84.github.io\/$repo\/$arch/;}' /mnt/etc/pacman.conf
+sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /mnt/etc/pacman.conf
+tee "/mnt/usr/bin/mirror_update" <<EOF
+#!/usr/bin/env bash
+set -uo pipefail
+
+if [[ -f /usr/bin/jq ]]; then
+  curl -sL 'https://archlinux.org/mirrors/status/json/' | \
+    jq -cr '[.urls[] | select(.active and .country_code=="DE" and .protocol=="https" and .completion_pct==1)] | sort_by(.score) | .[] | "# "+.details,"Server = "+.url+"\$repo/os/\$arch"' | \
+    sudo tee /etc/pacman.d/mirrorlist
+else
+  curl -sL 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_status=on' | \
+    sed -e 's/#Server/Server/g' | \
+    sudo tee /etc/pacman.d/mirrorlist
+fi
+EOF
+chmod +x "/mnt/usr/bin/mirror_update"
+mnt_cmd mirror_update
+mnt_pacman_update_unsafe
+
+# libxft-bgra needs to be first because of weird dependency problems with fonts
+mnt_pacman_need linux linux-headers linux-firmware nano base-devel \
+  htop grub efibootmgr dosfstools mtools dialog git ufw \
+  bash-completion openssh lvm2 pv lshw libxml2 jq \
+  dotnet-host dotnet-sdk dotnet-runtime aspnet-runtime \
+  aur/dotnet-runtime-5.0-bin aur/aspnet-runtime-5.0-bin \
+  dotnet-runtime-3.1 aspnet-runtime-3.1 \
+  unzip python python-pip words vim-dummy libxft-bgra \
+  wireguard-tools wget nfs-utils ncdu viu core/man man-pages-de trash-cli rmtrash \
+  gvfs gvfs-smb sshfs cifs-utils p7zip rsync \
+  arch-wiki-docs arch-wiki-lite \
+  pipewire pipewire-pulse pamixer pavucontrol playerctl \
+  net-tools fzf xdg-user-dirs
+mnt_cmd systemctl enable systemd-networkd systemd-resolved \
+  systemd-timesyncd sshd ufw fstrim.timer
+
+# install xkcd-pass python module
+mnt_cmd python -m pip install xkcd-pass
+
+tee /mnt/etc/systemd/network/20-wired.network <<EOF
+[Match]
+Name=en*
+
+[Network]
+DHCP=yes
+
+[DHCPv4]
+RouteMetric=10
+
+[IPv6AcceptRA]
+RouteMetric=10
+EOF
+tee /mnt/etc/systemd/network/25-wireless.network <<EOF
+[Match]
+Name=wl*
+
+[Network]
+DHCP=yes
+
+[DHCPv4]
+RouteMetric=20
+
+[IPv6AcceptRA]
+RouteMetric=20
+EOF
+mkdir /mnt/etc/systemd/system/systemd-networkd-wait-online.service.d
+tee /mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/wait-for-only-one-interface.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --any
+EOF
+
+# enable ntfs kernel support (since 5.15)
+echo "ntfs3" | tee /mnt/etc/modules-load.d/ntfs3.conf
+tee /mnt/etc/udev/rules.d/50-ntfs.rules <<EOF
+SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="ntfs", ENV{ID_FS_TYPE}="ntfs3"
+EOF
+
+# enable cifs kernel support
+echo "cifs" | tee /mnt/etc/modules-load.d/cifs.conf
+
+# detect wireless device
+WIRELESS=$(echo ${LSHARDWARE} | xmllint --xpath 'count(//capability[@id="wireless"])' -)
+if [[ ${WIRELESS} -gt 0 ]]; then
+  mnt_pacman_need iwd iw
+  mnt_cmd systemctl enable iwd
+  # ipv6 enable and 
+  tee /mnt/etc/iwd/main.conf <<EOF
+[General]
+EnableNetworkConfiguration=false
+
+[Network]
+EnableIPv6=true
+NameResolvingService=systemd
+EOF
+  # enable systemd-networkd device naming
+  ln -s /dev/null /mnt/etc/systemd/network/80-iwd.link
+fi
+
+# detect bluetooth device
+BLUETOOTH=$(echo ${LSHARDWARE} | xmllint --xpath 'count(//capability[@id="bluetooth"])' -)
+if [[ ${BLUETOOTH} -gt 0 ]]; then
+  mnt_pacman_need bluez bluez-utils bluez-plugins
+  mnt_cmd systemctl enable bluetooth
+  # enable bluetooth autoenable of devices
+  sed -i 's/^#\?AutoEnable=.*/AutoEnable=true/' /mnt/etc/bluetooth/main.conf
+fi
+
+if [ ${ramsize} -gt 16384 ]; then
+  # disable hibernation and hybrid-sleep modes
+  sed -i 's/^#\?HandleSuspendKey=.*/HandleSuspendKey=suspend/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleHibernateKey=.*/HandleHibernateKey=suspend/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=suspend/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleLidSwitchExternalPower=.*/HandleLidSwitchExternalPower=suspend/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleLidSwitchDocked=.*/HandleLidSwitchDocked=ignore/' /mnt/etc/systemd/logind.conf
+  mnt_cmd systemctl mask hibernate.target hybrid-sleep.target
+else
+  # enable systemwide hybrid sleep
+  sed -i 's/^#\?SuspendMode=.*/SuspendMode=suspend platform shutdown/' /mnt/etc/systemd/sleep.conf
+  sed -i 's/^#\?SuspendState=.*/SuspendState=disk/' /mnt/etc/systemd/sleep.conf
+  sed -i 's/^#\?HibernateDelaySec=.*/HibernateDelaySec=45min/' /mnt/etc/systemd/sleep.conf
+  sed -i 's/^#\?HandleSuspendKey=.*/HandleSuspendKey=suspend-then-hibernate/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleHibernateKey=.*/HandleHibernateKey=suspend-then-hibernate/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=suspend-then-hibernate/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleLidSwitchExternalPower=.*/HandleLidSwitchExternalPower=suspend-then-hibernate/' /mnt/etc/systemd/logind.conf
+  sed -i 's/^#\?HandleLidSwitchDocked=.*/HandleLidSwitchDocked=ignore/' /mnt/etc/systemd/logind.conf
+fi
+
+tee /mnt/etc/systemd/system/suspend@.service <<EOF
+[Unit]
+Description=User suspend actions
+Before=sleep.target
+
+[Service]
+User=%I
+Type=forking
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/xautolock -locknow
+ExecStartPost=/usr/bin/sleep 1
+
+[Install]
+WantedBy=sleep.target
+EOF
+tee /mnt/etc/systemd/system/resume@.service <<EOF
+[Unit]
+Description=User resume actions
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+User=root
+Type=oneshot
+ExecStartPre=/usr/bin/sleep 2
+ExecStart=/usr/bin/systemctl restart bluetooth iwd
+TimeoutSec=0
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+EOF
+
+# install some aur packages
+mnt_pacman_need aic94xx-firmware wd719x-firmware downgrade
+
+# disable system beep
+rmmod pcspkr || true
+echo "blacklist pcspkr" | tee /mnt/etc/modprobe.d/nobeep.conf
+
+# detect installed cpu and install appropriate microcodes
+CPU=$(echo ${LSHARDWARE} | xmllint --xpath '//node[@class="processor"]/vendor/text()' -)
+if [[ $CPU =~ [Aa][Mm][Dd] ]]; then
+  echo "AMD cpu detected."
+  mnt_pacman_need amd-ucode
+elif [[ $CPU =~ [Ii][Nn][Tt][Ee][Ll] ]]; then
+  echo "Intel cpu detected."
+  mnt_pacman_need intel-ucode
+fi
+
+# detect installed gpus -> multiple gpus means multiple drivers installed
+GPUS=$(echo ${LSHARDWARE} | xmllint --xpath '//node[@class="display"]/vendor/text()' -)
+for elem in $GPUS; do
+  if [[ $elem =~ [Aa][Mm][Dd] || $elem =~ [Aa][Tt][Ii] ]]; then
+    echo "AMD/ATI gpu detected."
+    mnt_pacman_need xf86-video-ati xf86-video-amdgpu mesa vulkan-radeon libva-mesa-driver mesa-vdpau libva-vdpau-driver libva-utils radeontop
+    # fix screen tearing
+    # https://linuxreviews.org/HOWTO_fix_screen_tearing
+    mkdir -p /mnt/etc/X11/xorg.conf.d
+    tee /mnt/etc/X11/xorg.conf.d/20-amdgpu.conf <<EOF
+Section "Device"
+    Identifier "AMD Graphics"
+    Driver "amdgpu"
+    Option "TearFree" "true"
+EndSection
+EOF
+    tee /mnt/etc/X11/xorg.conf.d/20-radeon.conf <<EOF
+Section "Device"
+    Identifier "AMD Graphics"
+    Driver "radeon"
+    Option "TearFree" "true"
+EndSection
+EOF
+  elif [[ $elem =~ [Nn][Vv][Ii][Dd][Ii][Aa] ]]; then
+    echo "NVIDIA gpu detected."
+    mnt_pacman_need xf86-video-nouveau mesa libva-mesa-driver mesa-vdpau libva-utils nvidia-smi
+    # fix screen tearing (hopefully, maybe?)
+    mkdir -p /mnt/etc/X11/xorg.conf.d
+    tee /mnt/etc/X11/xorg.conf.d/20-nouveau.conf <<EOF
+Section "Device"
+    Identifier "NVIDIA Graphics"
+    Driver "nouveau"
+    Option "TearFree" "true"
+EndSection
+EOF
+  elif [[ $elem =~ [Ii][Nn][Tt][Ee][Ll] ]]; then
+    echo "Intel gpu detected."
+    mnt_pacman_need xf86-video-intel mesa vulkan-intel libva-mesa-driver mesa-vdpau libva-intel-driver libva-utils intel-gpu-tools
+    # fix screen tearing
+    # https://linuxreviews.org/HOWTO_fix_screen_tearing
+    mkdir -p /mnt/etc/X11/xorg.conf.d
+    tee /mnt/etc/X11/xorg.conf.d/20-intel-gpu.conf <<EOF
+Section "Device"
+    Identifier "Intel Graphics"
+    Driver "intel"
+    Option "TearFree" "true"
+EndSection
+EOF
+  elif [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    echo "Virtual gpu detected."
+    mnt_pacman_need amd-ucode intel-ucode
+    mnt_pacman_need xf86-video-vmware mesa libva-mesa-driver mesa-vdpau libva-utils virtualbox-guest-utils
+    mnt_cmd systemctl enable vboxservice
+    # fix screen tearing (hopefully, maybe?)
+    mkdir -p /mnt/etc/X11/xorg.conf.d
+    tee /mnt/etc/X11/xorg.conf.d/20-vmware.conf <<EOF
+Section "Device"
+    Identifier "VMWARE Graphics"
+    Driver "vmware"
+    Option "TearFree" "true"
+EndSection
+EOF
+  fi
+done
+
+### Install the graphical system
+if [[ ${GRAPHICALENV} =~ "YES" ]]; then
+  [[ -f ${SCRIPTPATH}/bootstrap-graphical ]] && . ${SCRIPTPATH}/bootstrap-graphical || (
+    echo >&2 "no \"bootstrap-graphical\" in ${SCRIPTPATH} directory"
+    exit 1
+  )
+fi
+
+### Install user skeleton directory ###
+[[ -f ${SCRIPTPATH}/bootstrap-skel ]] && . ${SCRIPTPATH}/bootstrap-skel || (
+  echo >&2 "no \"bootstrap-skel\" in ${SCRIPTPATH} directory"
+  exit 1
+)
+
+# configure user settings
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  root_password=$(dialog --stdout --insecure --passwordbox "Enter password for root" 0 0) || exit 1
+  user_name=$(dialog --stdout --inputbox "Choose a username" 0 0) || exit 1
+  user_password=$(dialog --stdout --insecure --passwordbox "Enter password for ${user_name}" 0 0) || exit 1
+  clear
+fi
+user_groups="wheel"
+# enable VirtualBox Guest Utils when needed
+for elem in $GPUS; do
+  if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    user_groups="${user_groups},vboxsf"
+    break
+  fi
+done
+# user password and sudo priviledges
+echo -e "${root_password}\n${root_password}" | (mnt_cmd passwd)
+mnt_cmd useradd -m -g users -G ${user_groups} ${user_name}
+echo -e "${user_password}\n${user_password}" | (mnt_cmd passwd ${user_name})
+echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/99_wheel
+
+### set regionals for target system ###
+sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /mnt/etc/locale.gen
+mnt_cmd locale-gen
+echo "LANG=de_DE.UTF-8" > /mnt/etc/locale.conf
+ln -s /usr/share/zoneinfo/Europe/Berlin /mnt/etc/localtime
+mnt_cmd hwclock --systohc --utc
+mnt_cmd loadkeys de-latin1-nodeadkeys
+echo "KEYMAP=de-latin1-nodeadkeys" > /mnt/etc/vconsole.conf
+
+### enable user services ###
+mnt_cmd systemctl enable suspend@${user_name}.service
+mnt_cmd systemctl enable resume@${user_name}.service
+
+### create boot image and loader ###
+if [[ ! -z "$data_password" ]]; then
+  sed -i "s/^HOOKS=(.*/HOOKS=(base udev autodetect keyboard keymap modconf block lvm2 encrypt filesystems resume fsck)/g" /mnt/etc/mkinitcpio.conf
+else
+  sed -i "s/^HOOKS=(.*/HOOKS=(base udev autodetect keyboard keymap modconf block lvm2 filesystems resume fsck)/g" /mnt/etc/mkinitcpio.conf
+fi
+mnt_cmd mkinitcpio -P
+
+mnt_cmd grub-install "${device}" --recheck || true
+mnt_cmd grub-install --target=x86_64-efi --bootloader-id=grub_uefi --recheck || true
+sed -i 's/^#\?GRUB_DEFAULT=.*/GRUB_DEFAULT="saved"/' /mnt/etc/default/grub
+if [[ ! -z "$data_password" ]]; then
+  sed -i 's/^#\?GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 acpi_osi=Linux cryptdevice=UUID='"${crypt_uuid}"':'"${data_id}"' resume=\/dev\/mapper\/'"${volgrp_id}"'-swap"/' /mnt/etc/default/grub
+else
+  sed -i 's/^#\?GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 acpi_osi=Linux resume=\/dev\/mapper\/'"${volgrp_id}"'-swap"/' /mnt/etc/default/grub
+fi
+sed -i 's/^#\?GRUB_GFXMODE=.*/GRUB_GFXMODE=auto/' /mnt/etc/default/grub
+sed -i 's/^#\?GRUB_SAVEDEFAULT=.*/GRUB_SAVEDEFAULT="true"/' /mnt/etc/default/grub
+mnt_cmd grub-mkconfig -o /boot/grub/grub.cfg
+
+### we are done with the basic steps ###
+sync

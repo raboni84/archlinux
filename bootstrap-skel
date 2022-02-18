@@ -1,0 +1,1089 @@
+#!/usr/bin/env bash
+#
+# user skeleton installed in bootstrap
+#
+
+# place dotfiles into the skeleton directory
+tee "/mnt/etc/skel/.bash_profile" <<EOF
+#
+# ~/.bash_profile
+#
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
+# prepare user directory
+if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
+  if [[ ! -f \$HOME/.ssh/id_ed25519.pub ]]; then
+    echo "Generating a ssh key for user '\$USER'."
+    mkdir -p \$HOME/.ssh
+    chmod 0700 \$HOME/.ssh
+    ssh-keygen -t ed25519 -N "" -C "" -f \$HOME/.ssh/id_ed25519
+    ssh-keygen -t rsa -N "" -C "" -f \$HOME/.ssh/id_rsa
+    chmod 0600 \$HOME/.ssh/id_ed25519 \$HOME/.ssh/id_rsa
+    chmod 0644 \$HOME/.ssh/id_ed25519.pub \$HOME/.ssh/id_rsa.pub
+    eval "\$(ssh-agent -s)"
+    ssh-add \$HOME/.ssh/id_ed25519
+    ssh-add \$HOME/.ssh/id_rsa
+    eval "\$(ssh-agent -k)"
+  fi
+
+  if [[ ! -f \$HOME/.wg/\$USER.key ]]; then
+    echo "Generating wireguard keys for user '\$USER'."
+    mkdir -p \$HOME/.wg
+    chmod 0700 \$HOME/.wg
+    wg genkey | tee \$HOME/.wg/\$USER.key | wg pubkey > \$HOME/.wg/\$USER.pub
+    chmod 0600 \$HOME/.wg/\$USER.key
+    chmod 0644 \$HOME/.wg/\$USER.pub
+  fi
+fi
+
+# start display environment when logged in and configuration exists
+if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
+  exec startx
+fi
+EOF
+chmod 0600 "/mnt/etc/skel/.bash_profile"
+sudo cp "/mnt/etc/skel/.bash_profile" /mnt/root/
+
+tee "/mnt/etc/skel/.bashrc" <<EOF
+#
+# ~/.bashrc
+#
+
+# general global definitions
+export EDITOR=nano
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export WINEPREFIX="\$HOME/.local/wine"
+export WINEDEBUG=fixme-all,warn-all,err-all
+
+# append dotnet tools to user paths
+if ! [[ "\$PATH" =~ ":\$HOME/.dotnet/tools" ]]; then
+  export PATH="\$PATH:\$HOME/.dotnet/tools"
+fi
+
+# append local bin to user paths
+if ! [[ "\$PATH" =~ ":\$HOME/.local/bin" ]]; then
+  export PATH="\$PATH:\$HOME/.local/bin"
+fi
+
+# install/update/build AUR package(s)
+function aur() {
+  local BUILD=1
+  local TMPARR=()
+  while [[ \$# -gt 0 ]]; do
+    key="\$1"
+    case \$key in
+      -b|--buildonly)
+        BUILD=0
+        echo "build only option enabled"
+        shift
+        ;;
+      *)
+        TMPARR+=("\$1") # save it in an array for later
+        shift # past argument
+        ;;
+  esac
+  done
+  set -- "\${TMPARR[@]}"
+
+  [[ -d "\$HOME/.local/build" ]] || mkdir "\$HOME/.local/build"
+  while (( "\$#" )); do
+    if [[ \$(git ls-remote "https://aur.archlinux.org/\$1.git" | wc -l) -gt 0 ]]; then
+      git clone "https://aur.archlinux.org/\$1.git" "\$HOME/.local/build/\$1.aur" || true
+      pushd "\$HOME/.local/build/\$1.aur"
+        git config user.name ""
+        git config user.email ""
+        git pull --no-rebase || true
+        git submodule update --init --recursive || true
+        if [[ \$BUILD -eq 0 ]]; then
+          makepkg -s
+        else
+          makepkg -si --needed --noconfirm
+        fi
+      popd
+    else
+        echo "AUR package \$1 not found."
+    fi
+    shift
+  done
+}
+export -f aur
+
+function wgup() {
+  local username=\$(id -un)
+  sudo ip link add dev wg0 type wireguard
+  sudo ip addr add 10.0.0.1/24 dev wg0
+  sudo ip addr add fdc9:281f:04d7:9ee9::1/64 dev wg0
+  sudo wg set wg0 listen-port 51641 private-key \$HOME/.wg/\$username.key
+  sudo wg
+  sudo ufw allow 51641/udp
+  sudo ufw status
+}
+export -f wgup
+
+function wgdown() {
+  sudo ip link del wg0
+  sudo wg
+  sudo ufw delete allow 51641/udp
+  sudo ufw status
+}
+export -f wgdown
+
+function anyupdates() {
+  local username=\$(id -un)
+  local tmppath="/tmp/checkup-db-\$username"
+  local dbpath="\$(pacman-conf DBPath)"
+
+  mkdir -p "\$tmppath"
+  ln -s "\$dbpath/local" "\$tmppath" \&>/dev/null
+  fakeroot -- pacman -Syy --dbpath "\$tmppath" --color=auto --logfile /dev/null \&>/dev/null
+  pacman -Qu --dbpath "\$tmppath" --color=auto 2>/dev/null
+}
+export -f anyupdates
+
+# alias and color stuff
+alias ls='ls --color=auto'
+alias ll='ls -l --color=auto'
+alias la='ls -la --color=auto'
+alias diff='diff --color=auto'
+alias grep='grep --color=auto'
+alias ip='ip -color=auto'
+alias rm='rmtrash'
+alias rmdir='rmtrash -r'
+# fixes rm and rmdir not resolving to rmtrash and rmtrashdir while sudoing
+alias sudo='sudo '
+alias newpasswd='xkcd-pass -d " " -w /usr/share/dict/ngerman -n 4 -c 8 --no-padding-digits'
+alias cifs-copy='rsync -rtvus --size-only --stats --no-links --progress'
+if [[ \$(id -u) -eq 0 ]]; then
+  PS1='\\[\\e[;31m\\][\\u@\\h \\W]\\\$\\[\\e[m\\] '
+else
+  PS1='\\[\\e[;32m\\][\\u@\\h \\W]\\\$\\[\\e[m\\] '
+fi
+EOF
+for elem in $GPUS; do
+  if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    tee -a /mnt/etc/skel/.bashrc <<EOF
+
+# the virtual gpu can't handle GLSL 3.30, so a fallback needs to be placed for alacritty
+alias alacritty='env LIBGL_ALWAYS_SOFTWARE=1 alacritty'
+EOF
+    break
+  fi
+done
+
+chmod 0600 "/mnt/etc/skel/.bashrc"
+sudo cp "/mnt/etc/skel/.bashrc" /mnt/root/
+
+tee "/mnt/etc/skel/.dmrc" <<EOF
+[Desktop]
+Session=i3
+EOF
+
+tee "/mnt/etc/skel/.Xdefaults" <<EOF
+URxvt.saveLines: 1000
+URxvt.scrollBar: false
+URxvt.foreground: gray90
+URxvt.background: black
+URxvt.secondaryScroll: true
+URxvt.font: xft:monospace:pixelsize=14
+URxvt.perl-ext-common: default,matcher
+URxvt.urlLauncher: firefox
+URxvt.matcher.button: 1
+URxvt.tabbed.saveLines: 1000
+URxvt.tabbed.scrollBar: false
+URxvt.tabbed.tabbar-fg: 3
+URxvt.tabbed.tabbar-bg: 0
+URxvt.tabbed.tab-fg: 0
+URxvt.tabbed.tab-bg: 1
+URxvt.tabbed.secondaryScroll: true
+URxvt.tabbed.font: xft:monospace:pixelsize=14
+URxvt*inheritPixmap: true 
+URxvt*shading: 70
+
+! https://www.tomica.net/blog/2019/01/fixing-urxvt-copy-paste/
+URxvt.keysym.Shift-Control-V: eval:paste_clipboard
+URxvt.keysym.Shift-Control-C: eval:selection_to_clipboard
+URxvt.iso14755: false
+URxvt.iso14755_52: false
+EOF
+chmod 0600 "/mnt/etc/skel/.Xdefaults"
+sudo cp "/mnt/etc/skel/.Xdefaults" /mnt/root/
+
+tee "/mnt/etc/skel/.Xresources" <<EOF
+!
+! Font settings
+!
+
+Xft.dpi: 96
+Xft.autohint: 0
+Xft.lcdfilter: lcddefault
+Xft.hintstyle: hintslight
+Xft.hinting: 1
+! NO FORCING ANTIALIAS WHILE USING NOTO COLOR EMOJI!!!
+! (Firefox!)
+! Xft.antialias: 1
+Xft.rgba: rgb
+Xft.embeddedbitmap: 0
+EOF
+chmod 0600 "/mnt/etc/skel/.Xresources"
+sudo cp "/mnt/etc/skel/.Xresources" /mnt/root/
+
+tee "/mnt/etc/skel/.Xmodmap" <<EOF
+keysym Menu = Super_R
+EOF
+chmod 0600 "/mnt/etc/skel/.Xmodmap"
+sudo cp "/mnt/etc/skel/.Xmodmap" /mnt/root/
+
+tee "/mnt/etc/skel/.inputrc" <<EOF
+set enable-keypad on
+EOF
+chmod 0600 "/mnt/etc/skel/.inputrc"
+sudo cp "/mnt/etc/skel/.inputrc" /mnt/root/
+
+tee "/mnt/etc/skel/.xinitrc" <<EOF
+#
+# ~/.xinitrc
+#
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
+[[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
+
+[[ -f ~/.Xmodmap ]] && xmodmap ~/.Xmodmap
+
+[[ -f ~/.screenlayout/default.sh ]] && ~/.screenlayout/default.sh
+
+xset -b
+xset -dpms
+xset s off
+gammastep -l manual:51:10 -t 6500:3500 -b 1:0.75 -m randr &
+xautolock -time 10 -locker slock_run -nowlocker slock &
+flameshot &
+dunst &
+dbus-update-activation-environment DISPLAY
+[[ -f /usr/bin/blueman-applet ]] && blueman-applet &
+
+exec i3
+EOF
+chmod 0600 "/mnt/etc/skel/.xinitrc"
+
+mkdir -p "/mnt/etc/skel/.screenlayout"
+chmod 0700 "/mnt/etc/skel/.screenlayout"
+tee "/mnt/etc/skel/.screenlayout/default.sh" <<EOF
+#!/usr/bin/env bash
+intern=
+extern=
+xrandrout=\$(xrandr)
+
+####
+# use arandr "save as" scripts here
+####
+
+#if echo "\$xrandrout" | grep "\$extern connected"; then
+#    xrandr --output "\$intern" --primary --mode ... --pos 0x0 --rotate normal --output "\$extern" --mode ... --pos ... --rotate normal
+#else
+#    xrandr --output "\$intern" --primary --mode ... --pos 0x0 --rotate normal --output "\$extern" --off
+#fi
+
+nitrogen --set-zoom-fill "\$(find /usr/share/backgrounds -type f \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \\) | shuf -n 1)" --head=-1
+EOF
+chmod +x "/mnt/etc/skel/.screenlayout/default.sh"
+
+tee /mnt/etc/udev/rules.d/90-monitor-plugged-in.rules <<EOF
+SUBSYSTEM=="drm", ACTION=="change", RUN+="/home/${user_name}/.screenlayout/default.sh"
+EOF
+
+mkdir -p "/mnt/etc/skel/.local/bin"
+chmod 0700 "/mnt/etc/skel/.local"
+tee "/mnt/etc/skel/.local/bin/slock_run" <<EOF
+#!/usr/bin/env bash
+
+should_lock() {
+    if [[ \$(pactl list sink-inputs | tr -d '\\n' | sed -e 's/\\s\\+//g' | grep -c '[cC]orked:no[mM]ute:no[vV]olume:.*[1-9][0-9]*%/') -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+if should_lock; then
+    slock
+else
+    xautolock -restart
+fi
+EOF
+chmod +x "/mnt/etc/skel/.local/bin/slock_run"
+
+tee "/mnt/etc/skel/.local/bin/i3MoveNext" <<EOF
+#!/usr/bin/env bash
+
+wsText=\$( i3-msg -t get_workspaces )
+wsMin=\$( jq 'min_by(.num).num' <<< \$wsText )
+wsNext=\$(( \$( jq '.[] | select(.focused).num' <<< \$wsText ) + \$1))
+wsMax=\$( jq 'max_by(.num).num' <<< \$wsText )
+
+if [ \$wsNext -le \$wsMin ]; then
+    wsNext=\$(( \$wsMin - 1 ))
+elif [ \$wsNext -ge \$wsMax ]; then
+    wsNext=\$(( \$wsMax + 1 ))
+fi
+if [ \$wsNext -le 0 ]; then
+    wsNext=1
+elif [ \$wsNext -ge 11 ]; then
+    wsNext=10
+fi
+
+i3-msg move container to workspace number \$wsNext
+i3-msg workspace number \$wsNext
+EOF
+chmod +x "/mnt/etc/skel/.local/bin/i3MoveNext"
+
+tee "/mnt/etc/skel/.local/bin/launcher-desktop" <<EOF
+#!/usr/bin/env bash
+# terminal application launcher for i3/sway, using fzf
+# Changes in icons and command building
+# Forked from: https://gist.github.com/Biont/40ef59652acf3673520c7a03c9f22d2a
+# Based on: https://gitlab.com/FlyingWombat/my-scripts/blob/master/sway-launcher
+
+shopt -s nullglob
+if [[ "\$1" == 'describe' ]]; then
+  shift
+  if [[ \$2 == 'command' ]]; then
+    title=\$1
+    readarray arr < <(whatis -l "\$1" 2>/dev/null)
+    description="\${arr[0]}"
+    description="\${description%*-}"
+  else
+    title=\$(sed -ne '/^Name=/{s/^Name=//;p;q}' "\$1")
+    description=\$(sed -ne '/^Comment=/{s/^Comment=//;p;q}' "\$1")
+  fi
+  echo -e "\\033[33m\$title\\033[0m"
+  echo "\${description:-No description}"
+  exit
+fi
+
+HIST_FILE="\${XDG_CACHE_HOME:-\$HOME/.cache}/\${0##*/}-history.txt"
+
+DIRS=(
+  /usr/share/applications
+  "\$HOME/.local/share/applications"
+  /usr/local/share/applications
+)
+
+GLYPH_COMMAND=">_ "
+GLYPH_DESKTOP="🚀 "
+
+touch "\$HIST_FILE"
+readarray HIST_LINES <"\$HIST_FILE"
+FZFPIPE=\$(mktemp)
+PIDFILE=\$(mktemp)
+trap 'rm "\$FZFPIPE" "\$PIDFILE"' EXIT INT
+
+# Append Launcher History, removing usage count
+(printf '%s' "\${HIST_LINES[@]#* }" >>"\$FZFPIPE") &
+
+# Load and append Desktop entries
+(
+  for dir in "\${DIRS[@]}"; do
+    [[ -d "\$dir" ]] || continue
+    awk -v pre="\$GLYPH_DESKTOP" -F= '
+                BEGINFILE{application=0;block="";a=0}
+                /^\\[Desktop Entry\\]/{block="entry"}
+                /^Type=Application/{application=1}
+                /^\\[Desktop Action/{
+                  sub("^\\\\[Desktop Action ", "");
+                  sub("\\\\]\$", "");
+                  block="action";
+                  a++;
+                  actions[a,"key"]=\$0
+                }
+                /^Name=/{
+                if(block=="action") {
+                    actions[a,"name"]=\$2;
+                } else {
+                    name=\$2
+                }
+                }
+                ENDFILE{
+                  if (application){
+                      print FILENAME "\\034desktop\\034\\033[33m" pre name "\\033[0m";
+                      if (a>0)
+                          for (i=1; i<=a; i++)
+                              print FILENAME "\\034desktop\\034\\033[33m" pre name "\\033[0m (" actions[i, "name"] ")\\034" actions[i, "key"]
+                  }
+                }' \\
+      "\$dir/"*.desktop </dev/null >>"\$FZFPIPE"
+    # the empty stdin is needed in case no *.desktop files
+  done
+) &
+
+# Load and append command list
+(
+  IFS=:
+  read -ra path <<<"\$PATH"
+  for dir in "\${path[@]}"; do
+    printf '%s\\n' "\$dir/"* |
+      awk -F / -v pre="\$GLYPH_COMMAND" '{print \$NF "\\034command\\034\\033[31m" pre "\\033[0m" \$NF;}'
+  done | sort -u >>"\$FZFPIPE"
+) &
+
+COMMAND_STR=\$(
+  (
+    tail -n +0 -f "\$FZFPIPE" &
+    echo \$! >"\$PIDFILE"
+  ) |
+    fzf +s -x -d '\\034' --nth ..3 --with-nth 3 \\
+      --preview "\$0 describe {1} {2}" \\
+      --preview-window=up:3:wrap --ansi
+  kill -9 "\$(<"\$PIDFILE")" | tail -n1
+) || exit 1
+
+[ -z "\$COMMAND_STR" ] && exit 1
+
+# update history
+for i in "\${!HIST_LINES[@]}"; do
+  if [[ "\${HIST_LINES[i]}" == *" \$COMMAND_STR"\$'\\n' ]]; then
+    HIST_COUNT=\${HIST_LINES[i]%% *}
+    HIST_LINES[\$i]="\$((HIST_COUNT + 1)) \$COMMAND_STR"\$'\\n'
+    match=1
+    break
+  fi
+done
+if ! ((match)); then
+  HIST_LINES+=("1 \$COMMAND_STR"\$'\\n')
+fi
+
+printf '%s' "\${HIST_LINES[@]}" | sort -nr >"\$HIST_FILE"
+
+command='echo "nope"'
+# shellcheck disable=SC2086
+readarray -d \$'\\034' -t PARAMS <<<\${COMMAND_STR}
+# COMMAND_STR is "<string>\\034<type>"
+case \${PARAMS[1]} in
+desktop)
+  # Define the search pattern that specifies the block to search for within the .desktop file
+  PATTERN="^\\\\\\\\[Desktop Entry\\\\\\\\]"
+  if [[ -n \${PARAMS[3]} ]]; then
+    PATTERN="^\\\\\\\\[Desktop Action \${PARAMS[3]%?}\\\\\\\\]"
+  fi
+  # 1. We see a line starting [Desktop, but we're already searching: deactivate search again
+  # 2. We see the specified pattern: start search
+  # 3. We see an Exec= line during search: remove field codes and set variable
+  # 3. We see a Path= line during search: set variable
+  # 4. Finally, build command line
+  command=\$(awk -v pattern="\${PATTERN}" -F= '
+                BEGIN{a=0;exec=0; path=0}
+                   /^\\[Desktop/{
+                    if(a){
+                      a=0
+                    }
+                   }
+                  \$0 ~ pattern{
+                   a=1
+                  }
+                  /^Exec=/{
+                    if(a && !exec){
+                      sub("^Exec=", "");
+                      gsub(" ?%[cDdFfikmNnUuv]", "");
+                      exec=\$0;
+                    }
+                  }
+                  /^Path=/{
+                    if(a && !path){
+                      path=\$2
+                    }
+                   }
+
+                END{
+                  if(path){
+                    printf "%s","cd " path " && "
+                  }
+                  printf "%s",exec
+                }' "\${PARAMS[0]}")
+  ;;
+command)
+  command="\${PARAMS[0]}"
+  ;;
+esac
+
+echo "\$command"
+i3-msg -t command exec "\$command"
+#swaymsg ...
+EOF
+chmod +x "/mnt/etc/skel/.local/bin/launcher-desktop"
+
+mkdir -p "/mnt/etc/skel/.local/share/applications"
+tee "/mnt/etc/skel/.local/share/applications/defaults.list" <<EOF
+[Default Applications]
+inode/directory=pcmanfm.desktop;
+EOF
+
+mkdir -p "/mnt/etc/skel/.config/Code/User"
+tee "/mnt/etc/skel/.config/Code/User/settings.json" <<EOF
+{
+    "workbench.colorTheme": "Visual Studio 2019 Dark",
+    "editor.suggestSelection": "first",
+    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+    "workbench.editorAssociations": [
+        {
+            "viewType": "jupyter.notebook.ipynb",
+            "filenamePattern": "*.ipynb"
+        }
+    ]
+}
+EOF
+
+mkdir -p "/mnt/etc/skel/.config/dunst"
+tee "/mnt/etc/skel/.config/dunst/dunstrc" <<EOF
+[global]
+    monitor = 0
+    follow = mouse
+    geometry = "300x5-30+20"
+    progress_bar = true
+    progress_bar_height = 10
+    progress_bar_frame_width = 1
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+    indicate_hidden = yes
+    shrink = no
+    transparency = 0
+    notification_height = 0
+    separator_height = 2
+    padding = 8
+    horizontal_padding = 8
+    text_icon_padding = 0
+    frame_width = 3
+    frame_color = "#aaaaaa"
+    separator_color = frame
+    sort = yes
+    idle_threshold = 120
+    font = Monospace 10
+    line_height = 0
+    markup = full
+    format = "<b>%s</b>\\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_age_threshold = 60
+    word_wrap = yes
+    ellipsize = middle
+    ignore_newline = no
+    stack_duplicates = true
+    hide_duplicate_count = false
+    show_indicators = yes
+    icon_position = left
+    min_icon_size = 0
+    max_icon_size = 32
+    icon_path = /usr/share/icons/Papirus/16x16/status/:/usr/share/icons/Papirus/16x16/devices/
+    sticky_history = yes
+    history_length = 20
+    dmenu = /usr/bin/dmenu -p dunst:
+    browser = /usr/bin/firefox -new-tab
+    always_run_script = true
+    title = Dunst
+    class = Dunst
+    startup_notification = false
+    verbosity = mesg
+    corner_radius = 0
+    ignore_dbusclose = false
+    force_xwayland = false
+    force_xinerama = false
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+[experimental]
+    per_monitor_dpi = false
+
+[urgency_low]
+    background = "#222222"
+    foreground = "#888888"
+    timeout = 10
+
+[urgency_normal]
+    background = "#285577"
+    foreground = "#ffffff"
+    timeout = 10
+
+[urgency_critical]
+    background = "#900000"
+    foreground = "#ffffff"
+    frame_color = "#ff0000"
+    timeout = 0
+EOF
+
+mkdir -p "/mnt/etc/skel/.config/htop"
+tee "/mnt/etc/skel/.config/htop/htoprc" <<EOF
+# Beware! This file is rewritten by htop when settings are changed in the interface.
+# The parser is also very primitive, and not human-friendly.
+fields=0 48 17 18 38 39 40 2 46 47 49 1
+sort_key=46
+sort_direction=1
+tree_sort_key=48
+tree_sort_direction=1
+hide_kernel_threads=1
+hide_userland_threads=1
+shadow_other_users=1
+show_thread_names=0
+show_program_path=1
+highlight_base_name=0
+highlight_megabytes=1
+highlight_threads=1
+highlight_changes=0
+highlight_changes_delay_secs=5
+find_comm_in_cmdline=1
+strip_exe_from_cmdline=1
+show_merged_command=0
+tree_view=1
+tree_view_always_by_pid=0
+header_margin=1
+detailed_cpu_time=0
+cpu_count_from_one=1
+show_cpu_usage=1
+show_cpu_frequency=0
+show_cpu_temperature=0
+degree_fahrenheit=0
+update_process_names=0
+account_guest_in_cpu_meter=0
+color_scheme=0
+enable_mouse=1
+delay=15
+left_meters=AllCPUs Memory Swap
+left_meter_modes=1 1 1
+right_meters=Tasks LoadAverage Uptime
+right_meter_modes=2 2 2
+hide_function_bar=0
+EOF
+sudo mkdir -p "/mnt/root/.config/htop"
+sudo cp "/mnt/etc/skel/.config/htop/htoprc" "/mnt/root/.config/htop/"
+
+mkdir -p "/mnt/etc/skel/.config/xarchiver"
+tee "/mnt/etc/skel/.config/xarchiver/xarchiverrc" <<EOF
+[xarchiver]
+preferred_format=0
+prefer_unzip=true
+confirm_deletion=true
+sort_filename_content=false
+store_output=false
+icon_size=2
+show_archive_comment=false
+show_sidebar=true
+show_location_bar=true
+show_toolbar=true
+preferred_custom_cmd=
+preferred_temp_dir=/tmp
+preferred_extract_dir=
+allow_sub_dir=0
+ensure_directory=true
+overwrite=false
+full_path=true
+touch=false
+fresh=false
+update=false
+store_path=false
+updadd=false
+freshen=false
+recurse=true
+solid_archive=false
+remove_files=false
+EOF
+
+mkdir -p "/mnt/etc/skel/.config/alacritty"
+tee "/mnt/etc/skel/.config/alacritty/alacritty.yml" <<EOF
+# Configuration for Alacritty, the GPU enhanced terminal emulator.
+
+window:
+  title: term
+  dynamic_title: false
+
+font:
+  size: 10.0
+
+colors:
+  primary:
+    background: '0x000000'
+    foreground: '0xe5e5e5'
+  cursor:
+    text: '0x000000'
+    cursor: '0xe5e5e5'
+  normal:
+    black:   '#000000'
+    red:     '#af0000'
+    green:   '#00af00'
+    yellow:  '#afd700'
+    blue:    '#0000af'
+    magenta: '#af00af'
+    cyan:    '#00d7af'
+    white:   '#e5e5e5'
+  bright:
+    black:   '#7f7f7f'
+    red:     '#ff0000'
+    green:   '#00ff00'
+    yellow:  '#ffff00'
+    blue:    '#5c5cff'
+    magenta: '#ff00ff'
+    cyan:    '#00ffff'
+    white:   '#ffffff'
+EOF
+
+mkdir -p "/mnt/etc/skel/.local/etc"
+tee "/mnt/etc/skel/.local/etc/i3usage.txt" <<EOF
+Super+plus ==> Tastaturbelegung anzeigen
+Super+Return ==> Terminal
+Super+Shift+Return ==> Startmenü
+Super+q ==> Fenster schließen
+Super+Shift+q ==> "Bye-Bye"-Modus (ausloggen, abschalten, etc.)
+Super+l ==> Desktop abschließen
+Super+e ==> Dateimanager
+Super+w ==> Browser
+Super+p ==> Multimonitor-Konfiguration
+Super+Print ==> Screenshot aufnehmen
+Super+End ==> Monitor abschalten
+Super+Shift+r ==> i3 Konfiguration neu laden ohne ausloggen
+Super+[0-9] ==> Arbeitsbereich [0-9]
+Super+[Left,Down,Up,Right] ==> Fokus
+Super+Ctrl+[Left,Down,Up,Right] ==> Monitorfokus
+Super+Shift+[Left,Down,Up,Right] ==> Fenster verschieben
+Super+Ctrl+Shift+Left ==> Verschiebe Fenster auf Monitor
+Super+Shift+[0-9] ==> Fenster auf Arbeitsbereich [0-9] verschieben
+Super+Ctrl+Shift+[0-9] ==> Fenster mit Fokus auf Arbeitsbereich [0-9] verschieben
+Super+Mausrad ==> Fokus auf nächsten/vorherigen Arbeitsbereich
+Super+x ==> Fensterlayout toggeln: Stack -> Tabs -> Horizontal -> Vertikal
+Super+Shift+x ==> Fensterlayout invertiert toggeln: Stack <- Tabs <- Horizontal <- Vertikal
+Super+f ==> Fenster Vollbildmodus
+Super+m ==> Fenster in den Floating-Modus wechseln (Xfce-Modus)
+Super+a ==> Vaterkontainer fokussieren (mehrere Fenster)
+Super+Shift+minus ==> Fenster ins "Scratchpad" verschieben
+Super+minus ==> Fenster aus "Scratchpad" anzeigen
+Super+r ==> Fenstergröße anpassen
+Super+Pause ==> Passthrough-Modus (hört nicht mehr auf Super)
+XF86AudioRaiseVolume ==> Lautstärke um 5% hoch
+XF86AudioLowerVolume ==> Lautstärke um 5% runter
+XF86AudioMute ==> Mute toggeln
+XF86AudioMicMute ==> Mikrofon Mute toggeln
+XF86AudioPlay ==> Abspielen/Pause
+XF86AudioStop ==> Stopp
+XF86AudioNext ==> Nächster Titel
+XF86AudioPrev ==> Vorheriger Titel
+XF86MonBrightnessDown ==> Helligkeit um 10% verringern
+XF86MonBrightnessUp ==> Helligkeit um 10% erhöhen
+EOF
+
+mkdir -p "/mnt/etc/skel/.config/i3"
+tee "/mnt/etc/skel/.config/i3/config" <<EOF
+# Variables
+set \$mod Mod4
+set \$term "alacritty"
+set \$lock "xautolock -locknow"
+set \$filemanager "pcmanfm"
+set \$webbrowser "firefox --new-window"
+set \$screenshot "flameshot gui"
+set \$menu "alacritty --class 'Alacritty,launcher-desktop' -e bash -c 'launcher-desktop'"
+set \$output_config "arandr"
+set \$monitoroff "sleep 0.25;xset dpms force off"
+set \$refresh_sysinfo "killall -SIGHUP sysinfo"
+set \$force_refresh_sysinfo "killall -SIGUSR1 sysinfo"
+set \$helpwnd "notepadqq ~/.local/etc/i3usage.txt"
+
+# Font
+font pango:Sans 11
+
+## Key bindings
+# basic
+bindsym \$mod+Return exec --no-startup-id \$term
+bindsym \$mod+Shift+Return exec --no-startup-id \$menu
+bindsym \$mod+q kill
+bindsym \$mod+l exec --no-startup-id \$lock,exec --no-startup-id \$monitoroff
+bindsym \$mod+e exec --no-startup-id \$filemanager
+bindsym \$mod+w exec --no-startup-id \$webbrowser
+bindsym \$mod+p exec --no-startup-id \$output_config
+bindsym \$mod+Print exec --no-startup-id \$screenshot
+bindsym \$mod+Shift+r reload
+bindsym \$mod+plus exec --no-startup-id \$helpwnd
+
+floating_modifier \$mod
+
+# Workspaces
+bindsym \$mod+1 workspace number 1
+bindsym \$mod+2 workspace number 2
+bindsym \$mod+3 workspace number 3
+bindsym \$mod+4 workspace number 4
+bindsym \$mod+5 workspace number 5
+bindsym \$mod+6 workspace number 6
+bindsym \$mod+7 workspace number 7
+bindsym \$mod+8 workspace number 8
+bindsym \$mod+9 workspace number 9
+bindsym \$mod+0 workspace number 10
+
+# moving around
+bindsym \$mod+Left focus left
+bindsym \$mod+Down focus down
+bindsym \$mod+Up focus up
+bindsym \$mod+Right focus right
+
+bindsym \$mod+Control+Left focus output left
+bindsym \$mod+Control+Down focus output down
+bindsym \$mod+Control+Up focus output up
+bindsym \$mod+Control+Right focus output right
+
+bindsym \$mod+Shift+Left move left
+bindsym \$mod+Shift+Down move down
+bindsym \$mod+Shift+Up move up
+bindsym \$mod+Shift+Right move right
+
+bindsym \$mod+Shift+1 move container to workspace number 1
+bindsym \$mod+Shift+2 move container to workspace number 2
+bindsym \$mod+Shift+3 move container to workspace number 3
+bindsym \$mod+Shift+4 move container to workspace number 4
+bindsym \$mod+Shift+5 move container to workspace number 5
+bindsym \$mod+Shift+6 move container to workspace number 6
+bindsym \$mod+Shift+7 move container to workspace number 7
+bindsym \$mod+Shift+8 move container to workspace number 8
+bindsym \$mod+Shift+9 move container to workspace number 9
+bindsym \$mod+Shift+0 move container to workspace number 10
+
+bindsym \$mod+Control+Shift+1 move container to workspace number 1, workspace number 1
+bindsym \$mod+Control+Shift+2 move container to workspace number 2, workspace number 2
+bindsym \$mod+Control+Shift+3 move container to workspace number 3, workspace number 3
+bindsym \$mod+Control+Shift+4 move container to workspace number 4, workspace number 4
+bindsym \$mod+Control+Shift+5 move container to workspace number 5, workspace number 5
+bindsym \$mod+Control+Shift+6 move container to workspace number 6, workspace number 6
+bindsym \$mod+Control+Shift+7 move container to workspace number 7, workspace number 7
+bindsym \$mod+Control+Shift+8 move container to workspace number 8, workspace number 8
+bindsym \$mod+Control+Shift+9 move container to workspace number 9, workspace number 9
+bindsym \$mod+Control+Shift+0 move container to workspace number 10, workspace number 10
+
+bindsym \$mod+Control+Shift+Prior exec --no-startup-id i3MoveNext 11
+bindsym \$mod+Shift+Prior exec --no-startup-id i3MoveNext 1
+bindsym \$mod+Prior workspace next
+bindsym \$mod+Next workspace prev
+bindsym \$mod+Shift+Next exec --no-startup-id i3MoveNext -1
+bindsym \$mod+Control+Shift+Next exec --no-startup-id i3MoveNext -11
+bindsym --whole-window --border \$mod+Control+Shift+button4 exec --no-startup-id i3MoveNext 11
+bindsym --whole-window --border \$mod+Shift+button4 exec --no-startup-id i3MoveNext 1
+bindsym --whole-window --border \$mod+button4 workspace next
+bindsym --whole-window --border \$mod+button5 workspace prev
+bindsym --whole-window --border \$mod+Shift+button5 exec --no-startup-id i3MoveNext -1
+bindsym --whole-window --border \$mod+Control+Shift+button5 exec --no-startup-id i3MoveNext -11
+
+# Layout stuff
+bindsym \$mod+x layout toggle stacking tabbed splith splitv
+bindsym \$mod+Shift+x layout toggle tabbed stacking splitv splith
+
+hide_edge_borders both
+focus_follows_mouse no
+mouse_warping none
+default_border normal 1
+default_floating_border normal 3
+for_window [floating] move position center
+for_window [class="launcher-desktop"] floating enable, border none, resize set 30ppt 60ppt
+
+bindsym \$mod+f fullscreen toggle
+bindsym \$mod+m floating toggle, [workspace="__focused__" tiling] border normal 1, [workspace="__focused__" floating] border normal 3
+bindsym \$mod+a focus parent
+
+# Scratchpad
+bindsym \$mod+Shift+minus move scratchpad
+bindsym \$mod+minus scratchpad show
+
+# Resizing containers
+mode "resize" {
+    bindsym Down resize shrink height 20px
+    bindsym Left resize shrink width 20px
+    bindsym Up resize grow height 20px
+    bindsym Right resize grow width 20px
+
+    bindsym \$mod+Left focus left
+    bindsym \$mod+Down focus down
+    bindsym \$mod+Up focus up
+    bindsym \$mod+Right focus right
+
+    bindsym \$mod+Control+Left focus output left
+    bindsym \$mod+Control+Down focus output down
+    bindsym \$mod+Control+Up focus output up
+    bindsym \$mod+Control+Right focus output right
+
+    bindsym Return mode "default", [workspace="__focused__" tiling] border normal 1, [workspace="__focused__" floating] border normal 3
+    bindsym Escape mode "default", [workspace="__focused__" tiling] border normal 1, [workspace="__focused__" floating] border normal 3
+}
+bindsym \$mod+r mode "resize", [workspace="__focused__"] border normal 10
+
+# Passthrough mode
+mode "passthrough" {
+    bindsym \$mod+Pause mode "default"
+}
+bindsym \$mod+Pause mode "passthrough"
+
+# Multimedia
+bindsym XF86AudioRaiseVolume exec --no-startup-id pamixer -i 5 && \$refresh_sysinfo
+bindsym XF86AudioLowerVolume exec --no-startup-id pamixer -d 5 && \$refresh_sysinfo
+bindsym XF86AudioMute exec --no-startup-id pamixer -t && \$refresh_sysinfo
+bindsym XF86AudioMicMute exec --no-startup-id pamixer --default-source -t
+bindsym XF86AudioPlay exec --no-startup-id playerctl play-pause
+bindsym XF86AudioStop exec --no-startup-id playerctl stop
+bindsym XF86AudioNext exec --no-startup-id playerctl next
+bindsym XF86AudioPrev exec --no-startup-id playerctl previous
+bindsym XF86MonBrightnessDown exec --no-startup-id brightnessctl -q s 10%-
+bindsym XF86MonBrightnessUp exec --no-startup-id brightnessctl -q s +10%
+
+# Bye bye mode
+set \$byebye Bye-bye mode: (l) logout, (s) suspend-then-hibernate, (r) reboot, (p) poweroff, (return/esc) abort
+mode "\$byebye" {
+    bindsym l exit, mode "default"
+    bindsym s exec --no-startup-id systemctl suspend-then-hibernate, mode "default"
+    bindsym r exec --no-startup-id systemctl reboot, mode "default"
+    bindsym p exec --no-startup-id systemctl poweroff, mode "default"
+
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym \$mod+Shift+q mode "\$byebye"
+
+# Status Bar
+bar {
+    position top
+    tray_output primary
+    bindsym button4 workspace next
+    bindsym button5 workspace prev
+
+    status_command sysinfo -c -p -j
+
+    colors {
+        statusline #ffffff
+        background #323232
+        inactive_workspace #323232 #323232 #5c5c5c
+    }
+}
+EOF
+for elem in $GPUS; do
+  if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    sed -i 's/alacritty/env LIBGL_ALWAYS_SOFTWARE=1 alacritty/g' /mnt/etc/skel/.config/i3/config
+    break
+  fi
+done
+
+
+mkdir -p "/mnt/etc/skel/.config/libfm"
+tee "/mnt/etc/skel/.config/libfm/libfm.conf" <<EOF
+# Configuration file for the libfm version 1.3.2.
+# Autogenerated file, don't edit, your changes will be overwritten.
+
+[config]
+single_click=0
+use_trash=1
+confirm_del=1
+confirm_trash=1
+advanced_mode=0
+si_unit=0
+force_startup_notify=1
+backup_as_hidden=1
+no_usb_trash=1
+no_child_non_expandable=0
+show_full_names=1
+only_user_templates=0
+template_run_app=0
+template_type_once=0
+auto_selection_delay=600
+drop_default_action=auto
+defer_content_test=0
+quick_exec=0
+terminal=alacritty
+archiver=xarchiver
+thumbnail_local=1
+thumbnail_max=2048
+smart_desktop_autodrop=1
+
+[ui]
+big_icon_size=48
+small_icon_size=24
+pane_icon_size=24
+thumbnail_size=128
+show_thumbnail=1
+shadow_hidden=0
+
+[places]
+places_home=1
+places_desktop=1
+places_root=1
+places_computer=1
+places_trash=1
+places_applications=1
+places_network=1
+places_unmounted=1
+EOF
+for elem in $GPUS; do
+  if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    sed -i 's/alacritty/env LIBGL_ALWAYS_SOFTWARE=1 alacritty/g' /mnt/etc/skel/.config/libfm/libfm.conf
+    break
+  fi
+done
+
+mkdir -p "/mnt/etc/skel/.config/fontconfig"
+tee "/mnt/etc/skel/.config/fontconfig/fonts.conf" <<EOF
+<?xml version="1.0"?>
+<!-- https://hg.sr.ht/~jasonwryan/ -->
+
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+    <match target="font">
+        <edit name="rgba" mode="assign">
+            <const>rgb</const>
+        </edit>
+        <edit name="hinting" mode="assign">
+            <bool>true</bool>
+        </edit>
+        <edit name="autohint" mode="assign">
+            <bool>false</bool>
+        </edit>
+        <!--
+            NO FORCING ANTIALIAS WHILE USING NOTO COLOR EMOJI!!!
+            (Firefox!)
+            <edit name="antialias" mode="assign">
+                <bool>true</bool>
+            </edit>
+        -->
+        <edit name="hintstyle" mode="assign">
+            <const>hintslight</const>
+        </edit>
+        <edit name="lcdfilter" mode="assign">
+            <const>lcddefault</const>
+        </edit>
+        <edit name="embeddedbitmap" mode="assign">
+            <bool>false</bool>
+        </edit>
+
+        <!-- Hack for the not_contains file test to work even when the property is missing. -->
+        <edit name="file" mode="append">
+            <string></string>
+        </edit>
+    </match>
+
+    <!-- Use hintslight for Type 1 fonts, an improvement. -->
+    <match target="font">
+        <test name="fontformat" compare="eq">
+            <string>Type 1</string>
+        </test>
+        <edit name="hintstyle" mode="assign">
+            <const>hintslight</const>
+        </edit>
+    </match>
+
+    <!-- Web fonts. -->
+    <match target="font">
+        <test name="family" compare="contains">
+            <string>@font-face:</string>
+        </test>
+        <test name="file" qual="all" compare="not_contains">
+            <string>/</string>
+        </test>
+        <test name="fontformat" compare="eq">
+            <string>TrueType</string>
+        </test>
+        <edit name="autohint" mode="assign">
+            <bool>false</bool>
+        </edit>
+        <edit name="hintstyle" mode="assign">
+            <const>hintslight</const>
+        </edit>
+    </match>
+
+</fontconfig>
+EOF

@@ -1,0 +1,13 @@
+{
+    "id": "{{timestamp}}",
+    "date": "{{isotime `2006.01`}}",
+    "iso": "archlinux-{{user `date`}}.01-x86_64.iso",
+    "headless": "true",
+    "stage": "bootstrap",
+    "stage_files": "bootstrap,bootstrap-partition,bootstrap-graphical,bootstrap-skel",
+    "stage_cmd": "/dev/sda \"\" toor user resu",
+    "prov_user": "root",
+    "prov_pass": "toor",
+    "ova_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}.01-x86_64",
+    "vbox_name": "{{user `id`}}"
+}

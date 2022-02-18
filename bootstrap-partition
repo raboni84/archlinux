@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+#
+# partitioning in bootstrap
+#
+
+devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  device=$(dialog --stdout --menu "Select installation disk" 0 0 0 ${devicelist}) || exit 1
+  clear
+fi
+
+# list all hardware
+LSHARDWARE=$(lshw -xml -quiet)
+
+### Setup the disk and partitions ###
+ramsize=$(($(echo ${LSHARDWARE} | xmllint --xpath '//node[@id="memory" and @class="memory"]/size/text()' -) / (1024 * 1024)))
+if [ ${ramsize} -gt 16384 ]; then
+  swapsize=20480
+else
+  swapsize=$((${ramsize} * 5 / 4))
+fi
+
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  if ! dialog --cr-wrap --yesno "The partition table will be:\n\n\
+  ${device} [gpt]\n\
+  ├─/boot/EFI   fat32  ╟─     4MiB ─   132MiB ─╢\n\
+  ├─grub               ╟─   132MiB ─   134MiB ─╢\n\
+  ├─/           ext4   ╟─   136MiB ─ 24712MiB ─╢\n\
+  └─lvm (luks)         ╟─ 24712MiB ─    -4MiB ─╢\n\
+    ├─swap      swap      0MiB ─ ${swapsize}MiB\n\
+    └─/data     ext4      ${swapsize}MiB ─ -0MiB\n\
+      ├─./home -> /home\n\
+      ├─./var  -> /var\n\
+      ├─./root -> /root\n\
+      └─./srv  -> /srv" 17 55; then
+    clear
+    echo >&2 "aborted"
+    exit 1
+  fi
+  clear
+fi
+
+data_id="data"
+volgrp_id="volgrp"
+
+parted -s -a optimal -- ${device} \
+  mklabel gpt \
+  mkpart efi fat32 4Mib 132MiB \
+  set 1 esp on \
+  mkpart grub 132MiB 134MiB \
+  set 2 bios_grub on \
+  mkpart root ext4 136MiB 24712MiB \
+  mkpart ${data_id} 24712MiB -4MiB
+
+sleep 5
+
+part_efi="$(ls ${device}* | grep -E "^${device}p?1$")"
+part_boot="$(ls ${device}* | grep -E "^${device}p?2$")"
+part_root="$(ls ${device}* | grep -E "^${device}p?3$")"
+part_data="$(ls ${device}* | grep -E "^${device}p?4$")"
+
+# force unmount partitions when running the script a second time
+fuser -km ${part_efi} || true
+fuser -km ${part_boot} || true
+fuser -km ${part_root} || true
+fuser -km ${part_data} || true
+
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  data_password=$(dialog --stdout --insecure --passwordbox "Enter password for encrypted ${data_id} partition:\n\
+  (leave empty for no encryption)" 0 0) || exit 1
+  clear
+fi
+dd if=/dev/zero of=${part_data} bs=1M count=32 iflag=fullblock status=progress
+if [[ ! -z "$data_password" ]]; then
+  echo -n "${data_password}" | (cryptsetup -q -v luksFormat ${part_data} -d -)
+  echo -n "${data_password}" | (cryptsetup -q open ${part_data} ${data_id} -d -)
+  pvcreate -f /dev/mapper/${data_id}
+  vgcreate -f ${volgrp_id} /dev/mapper/${data_id}
+else
+  pvcreate -f ${part_data}
+  vgcreate -f ${volgrp_id} ${part_data}
+fi
+lvcreate -L ${swapsize}M ${volgrp_id} -n swap
+lvcreate -l 100%FREE ${volgrp_id} -n ${data_id}
+
+dd if=/dev/zero of=${part_efi} bs=1M count=16 iflag=fullblock status=progress
+mkfs.fat -F32 ${part_efi}
+dd if=/dev/zero of=${part_boot} bs=1M count=2 iflag=fullblock status=progress
+dd if=/dev/zero of=${part_root} bs=1M count=16 iflag=fullblock status=progress
+mkfs.ext4 ${part_root}
+dd if=/dev/zero of=/dev/${volgrp_id}/swap bs=1M count=16 iflag=fullblock status=progress
+mkswap /dev/${volgrp_id}/swap
+swapon /dev/${volgrp_id}/swap
+dd if=/dev/zero of=/dev/${volgrp_id}/${data_id} bs=1M count=16 iflag=fullblock status=progress
+mkfs.ext4 /dev/${volgrp_id}/${data_id}
+
+mount ${part_root} /mnt
+mkdir -p /mnt/boot/EFI
+mount ${part_efi} /mnt/boot/EFI
+mkdir -m750 /mnt/${data_id}
+mount /dev/${volgrp_id}/${data_id} /mnt/${data_id}
+chmod 750 /mnt/${data_id}
+
+mkdir -m755 /mnt/${data_id}/home /mnt/home
+mount -o rw,bind /mnt/${data_id}/home /mnt/home
+mkdir -m755 /mnt/${data_id}/var /mnt/var
+mount -o rw,bind /mnt/${data_id}/var /mnt/var
+mkdir -m750 /mnt/${data_id}/root /mnt/root
+mount -o rw,bind /mnt/${data_id}/root /mnt/root
+mkdir -m755 /mnt/${data_id}/srv /mnt/srv
+mount -o rw,bind /mnt/${data_id}/srv /mnt/srv
+
+mkdir -m755 /mnt/etc
+genfstab -U -p /mnt > /mnt/etc/fstab
+# bug in genfstab for bind mounts not stripping /mnt in front of path
+sed -i 's/\/mnt\/'"${data_id}"'\//\/'"${data_id}"'\//g' /mnt/etc/fstab
+if [[ ! -z "$data_password" ]]; then
+  crypt_uuid=$(cryptsetup luksUUID ${part_data})
+  echo "${data_id} /dev/disk/by-uuid/${crypt_uuid} none luks" > /mnt/etc/crypttab
+fi

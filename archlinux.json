@@ -1,0 +1,222 @@
+{
+    "builders": [
+        {
+            "name": "bootstrap",
+            "type": "virtualbox-iso",
+            "format": "ova",
+            "iso_url": "{{user `iso`}}",
+            "iso_checksum": "none",
+            "guest_os_type": "ArchLinux_64",
+            "guest_additions_mode": "disable",
+            "boot_wait": "1m",
+            "boot_command": [
+                "echo -e '{{user `prov_pass`}}\\n{{user `prov_pass`}}' | (passwd {{user `prov_user`}})<enter><wait2>"
+            ],
+            "disk_size": 65536,
+            "iso_interface": "sata",
+            "hard_drive_interface": "sata",
+            "hard_drive_nonrotational": true,
+            "hard_drive_discard": true,
+            "ssh_username": "{{user `prov_user`}}",
+            "ssh_password": "{{user `prov_pass`}}",
+            "ssh_timeout": "10m",
+            "acpi_shutdown": true,
+            "headless": "{{user `headless`}}",
+            "output_directory": "output/{{user `stage`}}",
+            "output_filename": "{{user `ova_name`}}",
+            "vm_name": "{{user `vbox_name`}}",
+            "vboxmanage": [
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--cpus",
+                    "3",
+                    "--memory",
+                    "3072",
+                    "--graphicscontroller",
+                    "vmsvga",
+                    "--accelerate3d",
+                    "on",
+                    "--accelerate2dvideo",
+                    "on",
+                    "--vram",
+                    "256",
+                    "--pae",
+                    "on",
+                    "--nested-hw-virt",
+                    "on",
+                    "--paravirtprovider",
+                    "kvm",
+                    "--hpet",
+                    "on",
+                    "--hwvirtex",
+                    "on",
+                    "--largepages",
+                    "on",
+                    "--boot1",
+                    "dvd",
+                    "--boot2",
+                    "none",
+                    "--boot3",
+                    "none",
+                    "--boot4",
+                    "none"
+                ]
+            ],
+            "vboxmanage_post": [
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--boot1",
+                    "disk",
+                    "--boot2",
+                    "none",
+                    "--boot3",
+                    "none",
+                    "--boot4",
+                    "none"
+                ]
+            ]
+        },
+        {
+            "name": "customize",
+            "type": "virtualbox-ovf",
+            "format": "ova",
+            "source_path": "{{user `ova_source`}}",
+            "guest_additions_mode": "disable",
+            "boot_wait": "1m",
+            "boot_command": [
+                "root<enter><wait2>toor<enter><wait5>",
+                "loadkezs us<enter><wait1>",
+                "echo \"%wheel ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/99_wheel<enter><wait2>",
+                "exit<enter><wait2>"
+            ],
+            "ssh_username": "{{user `prov_user`}}",
+            "ssh_password": "{{user `prov_pass`}}",
+            "ssh_timeout": "10m",
+            "acpi_shutdown": true,
+            "headless": "{{user `headless`}}",
+            "output_directory": "output/{{user `stage`}}",
+            "output_filename": "{{user `ova_name`}}",
+            "vm_name": "{{user `vbox_name`}}"
+        },
+        {
+            "name": "pxeboot",
+            "type": "virtualbox-ovf",
+            "format": "ova",
+            "source_path": "{{user `ova_source`}}",
+            "guest_additions_mode": "disable",
+            "boot_wait": "1m",
+            "boot_command": [
+                "echo -e '{{user `prov_pass`}}\\n{{user `prov_pass`}}' | (passwd {{user `prov_user`}})<enter><wait2>"
+            ],
+            "ssh_username": "{{user `prov_user`}}",
+            "ssh_password": "{{user `prov_pass`}}",
+            "ssh_timeout": "10m",
+            "acpi_shutdown": true,
+            "headless": "{{user `headless`}}",
+            "output_directory": "output/{{user `stage`}}",
+            "output_filename": "{{user `ova_name`}}",
+            "vm_name": "{{user `vbox_name`}}",
+            "skip_export": true,
+            "vboxmanage": [
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--boot1",
+                    "dvd",
+                    "--boot2",
+                    "none",
+                    "--boot3",
+                    "none",
+                    "--boot4",
+                    "none"
+                ],
+                [
+                    "storageattach",
+                    "{{.Name}}",
+                    "--storagectl",
+                    "SATA Controller",
+                    "--port",
+                    "1",
+                    "--device",
+                    "0",
+                    "--type",
+                    "dvddrive",
+                    "--medium",
+                    "{{user `iso`}}"
+                ],
+                [
+                    "sharedfolder",
+                    "add",
+                    "{{.Name}}",
+                    "--name",
+                    "pxe",
+                    "--hostpath",
+                    "output/{{user `stage`}}",
+                    "--automount"
+                ]
+            ]
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "file",
+            "content": "",
+            "destination": "/tmp/stdout.log"
+        },
+        {
+            "type": "file",
+            "content": "",
+            "destination": "/tmp/stderr.log"
+        },
+        {
+            "type": "file",
+            "sources": "{{user `stage_files`}}",
+            "destination": "/tmp/"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "echo building output/{{user `stage`}}/{{user `ova_name`}}.ova as user $(id -un)",
+                "echo command line: /tmp/{{user `stage`}} --auto {{user `stage_cmd`}}"
+            ],
+            "pause_after": "5s"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "chmod +x /tmp/{{user `stage`}}",
+                "/tmp/{{user `stage`}} --auto {{user `stage_cmd`}}"
+            ]
+        },
+        {
+            "type": "shell",
+            "only": [
+                "bootstrap"
+            ],
+            "inline": [
+                "\\rm -rf /mnt/var/cache/pacman/pkg/*"
+            ]
+        },
+        {
+            "type": "file",
+            "sources": [
+                "/tmp/stdout.log",
+                "/tmp/stderr.log"
+            ],
+            "destination": "output/{{user `stage`}}/",
+            "direction": "download"
+        },
+        {
+            "type": "shell",
+            "only": [
+                "customize"
+            ],
+            "inline": [
+                "sudo \\rm -rf /var/cache/pacman/pkg/*",
+                "echo \"%wheel ALL=(ALL) ALL\" | sudo tee /etc/sudoers.d/99_wheel"
+            ]
+        }
+    ]
+}

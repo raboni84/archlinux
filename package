@@ -1,0 +1,173 @@
+#!/bin/bash
+# It can be started by executing the following commands:
+#   curl -sL https://raw.githubusercontent.com/raboni84/arch/master/package > package
+#   chmod +x package
+#   ./package
+
+set -uo pipefail
+set +o history
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+### Set up logging ###
+exec 1> >(tee "/tmp/stdout.log")
+exec 2> >(tee "/tmp/stderr.log")
+
+pacman_update_unsafe() {
+  pacman -Syy --noconfirm --color=auto $@
+}
+partial_pacman_need_unsafe() {
+  while (( "$#" )); do
+    pacman -S --needed --noconfirm --color=auto --overwrite '*' $1
+    local deps=$(LC_ALL=C pacman -Si $1 2>/dev/null | grep 'Depends On' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
+    for pkg in $deps; do
+      local reqs=$(LC_ALL=C pacman -Sii $pkg 2>/dev/null | grep 'Required By' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
+      local explicit=$( ( pacman -Qqe; echo -e "$reqs" ) | sort | uniq -d )
+      pacman -S --needed --noconfirm --color=auto --overwrite '*' $explicit
+    done
+    shift
+  done
+}
+mnt_cmd() {
+  arch-chroot /mnt $@
+}
+
+# initialize root
+USER="$(id -un)"
+if [ ! "$EUID" -eq 0 ]; then
+  echo >&2 "Please run the script as root"
+  exit 1
+else
+  echo "Running as current user '$USER'"
+fi
+
+AUTO=""
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    -a|--auto)
+      AUTO="YES"
+      device="$2"
+      data_password="$3"
+      shift
+      shift
+      shift
+      echo "using device=$device, data_password=$data_password"
+      ;;
+    *)
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+### update system ###
+# get rid of reflector
+systemctl kill reflector || true
+systemctl stop reflector || true
+systemctl disable reflector
+# get arch mirrorlist
+curl -s 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_status=on' | \
+  sed -e 's/#Server/Server/g' | \
+  tee /etc/pacman.d/mirrorlist
+# resize tmpfs
+mount -o remount,size=80% /run/archiso/cowspace
+# update repo databases and install basic programs for setup
+pacman_update_unsafe
+partial_pacman_need_unsafe dialog lshw jq
+systemctl start vboxservice
+
+### set regionals for installation system ###
+sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen
+echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+rm /etc/localtime || true
+ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+hwclock --systohc --utc
+loadkeys de-latin1-nodeadkeys
+echo "KEYMAP=de-latin1-nodeadkeys" > /etc/vconsole.conf
+
+devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  device=$(dialog --stdout --menu "Select installation disk" 0 0 0 ${devicelist}) || exit 1
+  clear
+fi
+
+part_efi="$(ls ${device}* | grep -E "^${device}p?1$")"
+part_boot="$(ls ${device}* | grep -E "^${device}p?2$")"
+part_root="$(ls ${device}* | grep -E "^${device}p?3$")"
+part_data="$(ls ${device}* | grep -E "^${device}p?4$")"
+data_id="data"
+volgrp_id="volgrp"
+
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  data_password=$(dialog --stdout --insecure --passwordbox "Enter password for encrypted ${data_id} partition:\n\
+  (leave empty for no encryption)" 0 0) || exit 1
+  clear
+fi
+if [[ ! -z "$data_password" ]]; then
+  echo -n "${data_password}" | (cryptsetup -q open ${part_data} ${data_id} -d -)
+fi
+
+if [[ ! -d /mnt/data ]]; then
+  mkdir /tmp/overlays
+  mount -t tmpfs tmpfs -o size=80% /tmp/overlays
+  mkdir -p /tmp/overlays/{root,data}/{lower,work,upper}
+  mount ${part_root} -o ro /tmp/overlays/root/lower
+  mount /dev/${volgrp_id}/${data_id} -o ro /tmp/overlays/data/lower
+  
+  mount -t overlay overlay -o lowerdir=/tmp/overlays/root/lower,upperdir=/tmp/overlays/root/upper,workdir=/tmp/overlays/root/work /mnt
+  mount -t overlay overlay -o lowerdir=/tmp/overlays/data/lower,upperdir=/tmp/overlays/data/upper,workdir=/tmp/overlays/data/work /mnt/data
+  mount -o rw,bind /mnt/data/home /mnt/home
+  mount -o rw,bind /mnt/data/var /mnt/var
+  mount -o rw,bind /mnt/data/root /mnt/root
+  mount -o rw,bind /mnt/data/srv /mnt/srv
+fi
+
+mkdir -p /tmp/pxe
+if [[ -d /media/sf_pxe ]]; then
+  mount -o rw,bind /media/sf_pxe /tmp/pxe || true
+  if [[ -d /tmp/pxe/scripts ]]; then
+    for script in /tmp/pxe/scripts/*.sh; do
+      test -r "$script" && . "$script"
+    done
+  fi
+fi
+
+# if [[ ! -f /tmp/pxe/http/arch/x86_64/airootfs.erofs ]]; then
+if [[ ! -f /tmp/pxe/http/arch/x86_64/airootfs.sfs ]]; then
+  mkdir -p /tmp/pxe/http/arch/x86_64
+  # mkfs.erofs -zlz4hc,12 --exclude-path=boot --exclude-path=data --exclude-path=lost+found --exclude-path=etc/fstab --exclude-path=etc/crypttab -- /tmp/pxe/http/arch/x86_64/airootfs.erofs /mnt
+  mksquashfs /mnt /tmp/pxe/http/arch/x86_64/airootfs.sfs -comp xz -Xbcj x86 -b 1M -Xdict-size 1M -e /mnt/boot /mnt/data /mnt/lost+found /mnt/etc/fstab /mnt/etc/crypttab
+fi
+
+mnt_cmd pacman -Syy --noconfirm --color=auto
+mnt_cmd pacman -S --needed --noconfirm --color=auto syslinux arch-install-scripts archiso mkinitcpio mkinitcpio-archiso mkinitcpio-nfs-utils \
+  nbd curl pv amd-ucode intel-ucode
+
+if [[ ! -f /tmp/pxe/tftp/arch/x86_64/initramfs-linux.img ]]; then
+  mkdir -p /tmp/pxe/tftp/arch/x86_64
+  cp -a /mnt/usr/share/archiso/configs/releng/airootfs/etc/mkinitcpio.conf /mnt/etc/
+  cp -a /mnt/usr/share/archiso/configs/releng/airootfs/etc/mkinitcpio.d/linux.preset /mnt/etc/mkinitcpio.d/
+  mnt_cmd mkinitcpio -p linux
+  cp /mnt/boot/amd-ucode.img /tmp/pxe/tftp/arch/amd-ucode.img
+  cp /mnt/boot/intel-ucode.img /tmp/pxe/tftp/arch/intel-ucode.img
+  cp /mnt/boot/vmlinuz-linux /tmp/pxe/tftp/arch/x86_64/vmlinuz-linux
+  cp /mnt/boot/initramfs-linux.img /tmp/pxe/tftp/arch/x86_64/initramfs-linux.img
+fi
+
+if [[ ! -f /tmp/pxe/tftp/pxelinux.cfg/default ]]; then
+  mkdir -p /tmp/pxe/tftp/pxelinux.cfg
+  cp -a /mnt/usr/lib/syslinux/bios/*.c32 /tmp/pxe/tftp/
+  cp -a /mnt/usr/lib/syslinux/bios/pxelinux.0 /tmp/pxe/tftp/
+  cp -a /mnt/usr/lib/syslinux/bios/memdisk /tmp/pxe/tftp/
+  (
+    echo 'DEFAULT arch'
+    echo 'LABEL arch'
+    echo 'LINUX arch/x86_64/vmlinuz-linux'
+    echo 'INITRD arch/intel-ucode.img,arch/amd-ucode.img,arch/x86_64/initramfs-linux.img'
+    echo 'APPEND archiso_http_srv=http://${pxeserver}/ archisobasedir=arch cow_spacesize=80%'
+    echo 'IPAPPEND 3'
+  ) | tee /tmp/pxe/tftp/pxelinux.cfg/default
+fi

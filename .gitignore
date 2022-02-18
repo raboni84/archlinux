@@ -1,0 +1,7 @@
+output/
+pxe/
+archlinux-*.iso
+archlinux-*.tar.gz
+sha1sums.txt
+packer.*.txt
+*.7z

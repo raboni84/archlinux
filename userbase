@@ -1,0 +1,412 @@
+#!/bin/bash
+# WARNING: this script will destroy all data on the selected disk.
+# It can be started by executing the following commands:
+#   curl -sL https://raw.githubusercontent.com/raboni84/arch/master//userbase > userbase
+#   chmod +x userbase
+#   ./userbase
+
+set -uo pipefail
+set +o history
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+SCRIPT=`realpath "$0"`
+SCRIPTPATH=`dirname "$SCRIPT"`
+
+### Set up logging ###
+exec 1> >(tee "/tmp/stdout.log")
+exec 2> >(tee "/tmp/stderr.log")
+
+pacman_need() {
+  sudo pacman -S --needed --noconfirm --color=auto $@
+}
+
+# initialize user
+USER="$(id -un)"
+if [ "$EUID" -eq 0 ]; then
+  echo >&2 "Please don't run the script as root"
+  exit 1
+else
+  echo "Running as current user '$USER'"
+fi
+
+AUTO=""
+GRAPHICALENV="YES"
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    -a|--auto)
+      AUTO="YES"
+      OPTCHOICE="$2"
+      shift
+      shift
+      ;;
+    -ng|--no-graphical-env)
+      GRAPHICALENV=""
+      shift
+      ;;
+    *)
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+# prepare environment
+. ~/.bashrc
+mirror_update
+
+# configure firewall
+sudo ufw default deny
+sudo ufw limit SSH
+if [[ ${GRAPHICALENV} =~ "YES" ]]; then
+  sudo ufw limit 3389/tcp
+fi
+sudo ufw logging off
+sudo ufw enable
+
+# powershell in userspace
+dotnet tool install --global PowerShell || \
+  dotnet tool update --global PowerShell || \
+  true
+
+# dotnet-script in userspace
+dotnet tool install --global dotnet-script || \
+  dotnet tool update --global dotnet-script || \
+  true
+
+if [[ ${GRAPHICALENV} =~ "YES" ]]; then
+  [[ -f ${SCRIPTPATH}/userbase-graphical ]] && . ${SCRIPTPATH}/userbase-graphical || (
+    echo >&2 "no \"userbase-graphical\" in ${SCRIPTPATH} directory"
+    exit 1
+  )
+fi
+
+# menu
+BACKTITLE="Arch Linux Configuration Script"
+function selection_menu() {
+    menu=$1
+    shift
+    dialog --clear \
+           --backtitle "$BACKTITLE" \
+           --menu "$menu" \
+           15 40 4 \
+           "$@" \
+           2>&1 >/dev/tty
+}
+function checklist_menu() {
+    menu=$1
+    shift
+    dialog --clear \
+           --separate-output \
+           --backtitle "$BACKTITLE" \
+           --checklist "$menu" \
+           15 40 4 \
+           "$@" \
+           2>&1 >/dev/tty
+}
+OPTIONS=(devenv "Development" on
+  cyber "CyberChef" on
+  vbox "VirtualBox" off
+  dckr "Docker" off
+  steam "Steam" off
+  retro "RetroArch" off
+  plex "Plex" off
+  ytdlp "YT dwnld" off
+  mkmkv "MakeMKV" off
+  signal "Signal" off
+  gitsrv "Git Server" off)
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  OPTCHOICE=$(checklist_menu "Choose additional stuff:" "${OPTIONS[@]}")
+fi
+
+LSHARDWARE=$(lshw -xml -quiet)
+GPUS=$(echo ${LSHARDWARE} | xmllint --xpath '//node[@class="display"]/vendor/text()' -)
+
+# development environment
+devenv_install_package_rundeps() {
+  pushd ~/.vscode/extensions/$1
+    cat package.json \
+    | jq -c '.runtimeDependencies[] | select((.platforms[] | contains("linux")) and (.architectures[] | (contains("x86_64") or contains("x64"))))' \
+    | while read -r line; do
+      DESCR=$(echo $line | jq -r '.description')
+      URL=$(echo $line | jq -r '.url')
+      INSTPATH=$(echo $line | jq -r '.installPath')
+      echo "downloading $DESCR"
+      echo "from $URL to $INSTPATH"
+      wget -O /tmp/file.zip "$URL"
+      7z x -aoa -y -o"$INSTPATH" /tmp/file.zip
+      pushd "$INSTPATH"
+        # fix broken 'Windows' folders in zip
+        for file in *\\*; do
+          target="${file//\\//}"
+          mkdir -p "${target%/*}"
+          mv -v "$file" "$target"
+        done
+        echo $line | jq -r '.binaries[]' |
+          while read -r bins; do
+            if [[ ! -z "$bins" ]] && [[ -f "$bins" ]]; then
+              chmod 0755 "$bins"
+            fi
+          done
+        touch install.Lock
+      popd
+      rm /tmp/file.zip
+    done
+  popd
+}
+
+for choice in $OPTCHOICE; do
+  case $choice in
+    devenv)
+      pacman_need gdb nodejs npm
+      aur visual-studio-code-bin
+      # csharp
+      code --install-extension ms-dotnettools.csharp --force
+      csharppath=$(ls -1 ~/.vscode/extensions/ | sort -Vr | grep "ms-dotnettools.csharp" | head -1)
+      devenv_install_package_rundeps "$csharppath"
+      mkdir -p /tmp/csharp
+      pushd /tmp/csharp
+        # prepare nuget environment for convenient offline usage
+        dotnet new console --force || true
+        dotnet publish -r linux-x64 --self-contained || true
+        dotnet publish -r win-x64 --self-contained || true
+        dotnet publish -r osx-x64 --self-contained || true
+        dotnet new classlib --force || true
+        dotnet new webapp --force || true
+        dotnet new webapi --force || true
+      popd
+      rm -rf /tmp/csharp
+      # c++
+      code --install-extension ms-vscode.cpptools --force
+      csharppath=$(ls -1 ~/.vscode/extensions/ | sort -Vr | grep "ms-vscode.cpptools" | head -1)
+      devenv_install_package_rundeps "$csharppath"
+      # python
+      code --install-extension ms-python.python --force
+      pip install pylint
+      # xml
+      code --install-extension dotjoshjohnson.xml --force
+      # better comments
+      code --install-extension aaron-bond.better-comments --force
+      # git graph
+      code --install-extension mhutchie.git-graph --force
+      # docker
+      code --install-extension ms-azuretools.vscode-docker --force
+      # yara
+      code --install-extension infosec-intern.yara --force
+      # reset application defaults
+      xdg-mime default visual-studio-code.desktop 'text/html'
+      xdg-mime default visual-studio-code.desktop 'text/x-shellscript'
+      xdg-mime default visual-studio-code.desktop 'application/json'
+      xdg-mime default visual-studio-code.desktop 'text/xml'
+      xdg-mime default visual-studio-code.desktop 'text/x-php'
+      xdg-mime default visual-studio-code.desktop 'text/x-c'
+      xdg-mime default visual-studio-code.desktop 'text/x-c++'
+    ;;
+  esac
+done
+
+# cyberchef
+for choice in $OPTCHOICE; do
+  case $choice in
+    cyber)
+      pacman_need cyberchef-electron
+    ;;
+  esac
+done
+
+# virtualbox
+for choice in $OPTCHOICE; do
+  case $choice in
+    vbox)
+      pacman_need virtualbox virtualbox-host-dkms
+    ;;
+  esac
+done
+
+# docker
+for choice in $OPTCHOICE; do
+  case $choice in
+    dckr)
+      pacman_need docker
+      sudo systemctl enable docker
+    ;;
+  esac
+done
+
+# steam
+for choice in $OPTCHOICE; do
+  case $choice in
+    steam)
+      pacman_need steam
+      for elem in $GPUS; do
+        if [[ $elem =~ [Aa][Mm][Dd] || $elem =~ [Aa][Tt][Ii] ]]; then
+          echo "AMD/ATI gpu detected."
+          pacman_need lib32-mesa lib32-vulkan-radeon lib32-libva-mesa-driver lib32-libva-vdpau-driver
+        elif [[ $elem =~ [Nn][Vv][Ii][Dd][Ii][Aa] ]]; then
+          echo "NVIDIA gpu detected."
+          pacman_need lib32-mesa
+        elif [[ $elem =~ [Ii][Nn][Tt][Ee][Ll] ]]; then
+          echo "Intel gpu detected."
+          pacman_need lib32-mesa lib32-vulkan-intel lib32-libva-intel-driver
+        fi
+      done
+      aur hid-nintendo-dkms jstest-gtk-git qjoypad
+    ;;
+  esac
+done
+
+# retroarch
+for choice in $OPTCHOICE; do
+  case $choice in
+    retro)
+      pacman_need retroarch retroarch-assets-ozone retroarch-assets-xmb libretro-bsnes libretro-core-info \
+        libretro-dolphin libretro-mgba libretro-nestopia libretro-parallel-n64 libretro-sameboy joyutils \
+        dolphin-emu pcsx2
+      aur hid-nintendo-dkms jstest-gtk-git qjoypad
+      sudo usermod -aG input $USER
+    ;;
+  esac
+done
+
+# plex
+for choice in $OPTCHOICE; do
+  case $choice in
+    plex)
+      aur plex-media-server-plexpass
+      sudo systemctl enable plexmediaserver
+    ;;
+  esac
+done
+
+# yt-dlp
+# https://github.com/yt-dlp/yt-dlp
+for choice in $OPTCHOICE; do
+  case $choice in
+    ytdlp)
+      pacman_need yt-dlp
+      sudo tee -a /etc/skel/.bashrc <<EOF
+### yt-dlp ###
+
+function downloadaudio() {
+  while (( "\$#" )); do
+    yt-dlp --ignore-errors --audio-format mp3 --audio-quality 0 --extract-audio --add-metadata \\
+      --continue --no-overwrites --write-thumbnail --convert-thumbnail jpg --embed-thumbnail \\
+      --output "%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      --output "thumbnail:%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      "\$1"
+    shift
+  done
+}
+export -f downloadaudio
+
+function downloadvideo() {
+  while (( "\$#" )); do
+    yt-dlp --ignore-errors --audio-quality 0 --add-metadata \\
+      --continue --no-overwrites --write-thumbnail --convert-thumbnail jpg --embed-thumbnail \\
+      --output "%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      --output "thumbnail:%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      "\$1"
+    shift
+  done
+}
+export -f downloadvideo
+EOF
+      sudo tee -a "/home/$USER/.bashrc" <<EOF
+### yt-dlp ###
+
+function downloadaudio() {
+  while (( "\$#" )); do
+    yt-dlp --ignore-errors --audio-format mp3 --audio-quality 0 --extract-audio --add-metadata \\
+      --continue --no-overwrites --write-thumbnail --convert-thumbnail jpg --embed-thumbnail \\
+      --output "%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      --output "thumbnail:%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      "\$1"
+    shift
+  done
+}
+export -f downloadaudio
+
+function downloadvideo() {
+  while (( "\$#" )); do
+    yt-dlp --ignore-errors --audio-quality 0 --add-metadata \\
+      --continue --no-overwrites --write-thumbnail --convert-thumbnail jpg --embed-thumbnail \\
+      --output "%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      --output "thumbnail:%(playlist)s - %(playlist_index)03d - %(title)s.%(ext)s" \\
+      "\$1"
+    shift
+  done
+}
+export -f downloadvideo
+EOF
+    ;;
+  esac
+done
+
+# makemkv
+for choice in $OPTCHOICE; do
+  case $choice in
+    mkmkv)
+      aur makemkv
+      echo "sg" | sudo tee /etc/modules-load.d/sg.conf
+      sudo modprobe sg
+    ;;
+  esac
+done
+
+# signal
+for choice in $OPTCHOICE; do
+  case $choice in
+    signal)
+      pacman_need signal-desktop
+    ;;
+  esac
+done
+
+# git server
+# https://esc.sh/blog/setting-up-a-git-http-server-with-nginx/
+for choice in $OPTCHOICE; do
+  case $choice in
+    gitsrv)
+      pacman_need nginx git fcgiwrap
+      sudo mkdir -p /srv/git/repo.git
+      sudo useradd -m -d /srv/git -g users -G www-data git
+      sudo passwd -d git
+      sudo chown -R git:users /srv/git
+      sudo git init --bare --shared /srv/git/repo/
+      sudo git config --bool http.receivepack false
+
+      sudo tee /etc/nginx/sites-available/git <<EOF
+server {
+  listen 127.0.0.1:8092;
+  server_name _;
+
+  root /srv/git;
+
+  location ~ (/.*) {
+    fastcgi_pass unix:/var/run/fcgiwrap.socket;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME /usr/lib/git-core/git-http-backend;
+    # export all repositories under GIT_PROJECT_ROOT
+    fastcgi_param GIT_HTTP_EXPORT_ALL "";
+    fastcgi_param GIT_PROJECT_ROOT /srv/git;
+    fastcgi_param PATH_INFO \$1;
+  }
+}
+EOF
+      sudo ln -s /etc/nginx/sites-available/git /etc/nginx/sites-enabled/git
+      sudo systemctl enable fcgiwrap nginx
+      sudo systemctl start fcgiwrap nginx
+      
+      sudo mkdir /srv/git/.ssh
+      cat $HOME/.ssh/id_ed25519.pub | sudo tee /srv/git/.ssh/authorized_keys >/dev/null
+      sudo chmod u=rwx,g=,o= /srv/git/.ssh
+      sudo chmod u=rw,g=,o= /srv/git/.ssh/authorized_keys
+      sudo chown -R git:users /srv/git
+    ;;
+  esac
+done
+
+### we are done with userbase ###
+sync

@@ -1,0 +1,14 @@
+{
+    "id": "{{timestamp}}",
+    "date": "{{isotime `2006.01`}}",
+    "headless": "true",
+    "stage": "userbase",
+    "old_stage": "bootstrap",
+    "ova_source": "output/archlinux-{{user `old_stage`}}-console-{{user `date`}}.01-x86_64.ova",
+    "stage_files": "userbase",
+    "stage_cmd": "\"\" --no-graphical-env",
+    "prov_user": "user",
+    "prov_pass": "resu",
+    "ova_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}.01-x86_64",
+    "vbox_name": "{{user `id`}}"
+}
