@@ -195,6 +195,10 @@ for choice in $OPTCHOICE; do
       code --install-extension ms-azuretools.vscode-docker --force
       # yara
       code --install-extension infosec-intern.yara --force
+      # git blame support in status bar
+      code --install-extension waderyan.gitblame --force
+      # git graph in several places (status bar, git tab, ...)
+      code --install-extension mhutchie.git-graph --force
       # reset application defaults
       xdg-mime default visual-studio-code.desktop 'text/html'
       xdg-mime default visual-studio-code.desktop 'text/x-shellscript'
