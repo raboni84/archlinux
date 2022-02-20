@@ -165,7 +165,9 @@
             "inline": [
                 "mkdir -p /tmp/auto",
                 "touch /tmp/auto/stdout.log",
-                "touch /tmp/auto/stderr.log"
+                "touch /tmp/auto/stderr.log",
+                "ln -s /tmp/auto/stdout.log /tmp/stdout.log",
+                "ln -s /tmp/auto/stderr.log /tmp/stderr.log"
             ]
         },
         {
