@@ -167,7 +167,7 @@ mnt_pacman_need linux linux-headers linux-firmware nano base-devel \
   gvfs gvfs-smb sshfs cifs-utils p7zip rsync \
   arch-wiki-docs arch-wiki-lite \
   pipewire pipewire-pulse pamixer pavucontrol playerctl \
-  net-tools fzf xdg-user-dirs
+  net-tools fzf xdg-user-dirs aur/pipefilter
 mnt_cmd systemctl enable systemd-networkd systemd-resolved \
   systemd-timesyncd sshd ufw fstrim.timer
 
