@@ -43,16 +43,16 @@ After the bootstrap step, the installation disk will have the following layout:
 
 ```bash
 ${device} [gpt]
-  ├─/boot/EFI   fat32  ╟─     4MiB ─   132MiB ─╢
-  ├─grub               ╟─   132MiB ─   134MiB ─╢
-  ├─/           ext4   ╟─   136MiB ─ 24712MiB ─╢
-  └─lvm (luks)         ╟─ 24712MiB ─    -4MiB ─╢
-    ├─swap      swap      0MiB ─ ${swapsize}MiB
-    └─/data     ext4      ${swapsize}MiB ─ -0MiB
-      ├─./home -> /home
-      ├─./var  -> /var
-      ├─./root -> /root
-      └─./srv  -> /srv
+├─/boot/EFI    fat32  ╟─     4MiB ─   132MiB ─╢
+├─grub                ╟─   132MiB ─   134MiB ─╢
+├─/            ext4   ╟─   136MiB ─ 24712MiB ─╢
+└─lvm (luks)          ╟─ 24712MiB ─    -4MiB ─╢
+  ├─swap       swap      0MiB ─ ${swapsize}MiB
+  └─/data      ext4      ${swapsize}MiB ─ -0MiB
+    ├─home     /home
+    ├─var      /var
+    ├─root     /root
+    └─srv      /srv
 ```
 
 If you haven't altered anything the default password for `root` will be `toor` and an account named `user` with the password `resu` will be created. As the i3 window manager won't be as easy to control like for example a XFCE, the first steps you can take are `Super`+`Enter`, which will open a terminal or `Super`+`Shift`+`Enter`, which will be your startmenu replacement. Everything else can be looked up inside `Super`+`Plus`, which will bring up notepadqq with a keyboard layout. I mapped the `Menu` key to the right `Super` key missing on todays keyboards to execute the same commands for more comfortable hand gestures depending on the given keyboard. (The `Super` key is [here](https://en.wikipedia.org/wiki/Windows_key), the `Menu` key [here](https://en.wikipedia.org/wiki/Menu_key))

@@ -22,17 +22,17 @@ fi
 
 if [[ ! ${AUTO} =~ "YES" ]]; then
   if ! dialog --cr-wrap --yesno "The partition table will be:\n\n\
-  ${device} [gpt]\n\
-  ├─/boot/EFI   fat32  ╟─     4MiB ─   132MiB ─╢\n\
-  ├─grub               ╟─   132MiB ─   134MiB ─╢\n\
-  ├─/           ext4   ╟─   136MiB ─ 24712MiB ─╢\n\
-  └─lvm (luks)         ╟─ 24712MiB ─    -4MiB ─╢\n\
-    ├─swap      swap      0MiB ─ ${swapsize}MiB\n\
-    └─/data     ext4      ${swapsize}MiB ─ -0MiB\n\
-      ├─./home -> /home\n\
-      ├─./var  -> /var\n\
-      ├─./root -> /root\n\
-      └─./srv  -> /srv" 17 55; then
+${device} [gpt]\n\
+├─/boot/EFI    fat32  ╟─     4MiB ─   132MiB ─╢\n\
+├─grub                ╟─   132MiB ─   134MiB ─╢\n\
+├─/            ext4   ╟─   136MiB ─ 24712MiB ─╢\n\
+└─lvm (luks)          ╟─ 24712MiB ─    -4MiB ─╢\n\
+  ├─swap       swap      0MiB ─ ${swapsize}MiB\n\
+  └─/data      ext4      ${swapsize}MiB ─ -0MiB\n\
+    ├─home     /home\n\
+    ├─var      /var\n\
+    ├─root     /root\n\
+    └─srv      /srv" 17 55; then
     clear
     echo >&2 "aborted"
     exit 1
