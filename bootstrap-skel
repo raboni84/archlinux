@@ -66,6 +66,11 @@ if ! [[ "\$PATH" =~ ":\$HOME/.local/bin" ]]; then
   export PATH="\$PATH:\$HOME/.local/bin"
 fi
 
+# include XDG homedirs
+if [ -f "\$HOME/.config/user-dirs.dirs" ]; then
+  . "\$HOME/.config/user-dirs.dirs"
+fi
+
 # install/update/build AUR package(s)
 function aur() {
   local BUILD=1
