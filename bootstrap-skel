@@ -690,6 +690,9 @@ mkdir -p "/mnt/etc/skel/.config/alacritty"
 tee "/mnt/etc/skel/.config/alacritty/alacritty.yml" <<EOF
 # Configuration for Alacritty, the GPU enhanced terminal emulator.
 
+env:
+  TERM: xterm-256color
+
 window:
   title: term
   dynamic_title: false
