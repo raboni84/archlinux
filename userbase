@@ -116,7 +116,8 @@ OPTIONS=(devenv "Development" on
   ytdlp "YT dwnld" off
   mkmkv "MakeMKV" off
   signal "Signal" off
-  gitsrv "Git Server" off)
+  gitsrv "Git Server" off
+  websrv "Web Server" off)
 if [[ ! ${AUTO} =~ "YES" ]]; then
   OPTCHOICE=$(checklist_menu "Choose additional stuff:" "${OPTIONS[@]}")
 fi
@@ -408,6 +409,35 @@ EOF
       sudo chmod u=rwx,g=,o= /srv/git/.ssh
       sudo chmod u=rw,g=,o= /srv/git/.ssh/authorized_keys
       sudo chown -R git:users /srv/git
+    ;;
+  esac
+done
+
+# web server
+for choice in $OPTCHOICE; do
+  case $choice in
+    websrv)
+      pacman_need nginx fcgiwrap
+      sudo mkdir -p /srv/www
+      
+      sudo tee /etc/nginx/sites-available/www <<EOF
+server {
+  listen 127.0.0.1:8091;
+  server_name _;
+
+  root /srv/www;
+  index index.html index.htm;
+
+  location / {
+    try_files $uri $uri/index.html $uri/index.htm =404;
+  }
+}
+EOF
+      sudo ln -s /etc/nginx/sites-available/www /etc/nginx/sites-enabled/www
+      sudo systemctl enable fcgiwrap nginx
+      sudo systemctl start fcgiwrap nginx
+      
+      sudo chown -R www-data:www-data /srv/www
     ;;
   esac
 done
