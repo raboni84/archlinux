@@ -100,14 +100,19 @@ function aur() {
         git config user.email ""
         git pull --no-rebase || true
         git submodule update --init --recursive || true
-        if [[ \$BUILD -eq 0 ]]; then
+		    (. PKGBUILD; if [ ! -z "\${makedepends[@]}" ]; then
+          sudo pacman -S --needed --noconfirm --asdeps --color=auto \${makedepends[@]}
+        fi; if [ ! -z "\${depends[@]}" ]; then
+          sudo pacman -S --needed --noconfirm --asdeps --color=auto \${depends[@]}
+        fi)
+        if [ \$BUILD -eq 0 ]; then
           makepkg -s
         else
           makepkg -si --needed --noconfirm
         fi
       popd
     else
-        echo "AUR package \$1 not found."
+      echo "AUR package \$1 not found."
     fi
     shift
   done
