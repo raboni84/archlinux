@@ -202,9 +202,19 @@
         {
             "type": "shell",
             "only": [
+                "bootstrap"
+            ],
+            "inline": [
+                "/usr/bin/rm -rf /mnt/var/cache/pacman/pkg/*"
+            ]
+        },
+        {
+            "type": "shell",
+            "only": [
                 "customize"
             ],
             "inline": [
+                "sudo /usr/bin/rm -rf /var/cache/pacman/pkg/*",
                 "echo \"%wheel ALL=(ALL) ALL\" | sudo tee /etc/sudoers.d/99_wheel"
             ]
         }
