@@ -163,46 +163,39 @@
         {
             "type": "shell",
             "inline": [
-                "mkdir -p /tmp/auto",
-                "touch /tmp/auto/stdout.log",
-                "touch /tmp/auto/stderr.log",
-                "ln -s /tmp/auto/stdout.log /tmp/stdout.log",
-                "ln -s /tmp/auto/stderr.log /tmp/stderr.log"
+                "touch /tmp/stdout.log",
+                "touch /tmp/stderr.log"
             ]
         },
         {
             "type": "file",
             "sources": "{{user `stage_files`}}",
-            "destination": "/tmp/auto/"
+            "destination": "/tmp/"
         },
         {
             "type": "shell",
             "inline": [
                 "echo \"building as user: $(id -un)\"",
-                "echo \"command line: /tmp/auto/{{user `stage`}} {{user `stage_cmd`}}\""
+                "echo \"command line: /tmp/{{user `stage`}} {{user `stage_cmd`}}\""
             ],
             "pause_after": "10s"
         },
         {
             "type": "shell",
             "inline": [
-                "chmod +x /tmp/auto/{{user `stage`}}",
-                "/tmp/auto/{{user `stage`}} {{user `stage_cmd`}}"
-            ]
-        },
-        {
-            "type": "shell",
-            "only": [
-                "bootstrap"
-            ],
-            "inline": [
-                "\\rm -rf /mnt/var/cache/pacman/pkg/*",
-                "fstrim -a"
+                "chmod +x /tmp/{{user `stage`}}",
+                "/tmp/{{user `stage`}} {{user `stage_cmd`}}"
             ]
         },
         {
             "type": "file",
-            "source": "/tmp/auto/*",
+            "source": "/tmp/stdout.log",
+            "destination": "output/{{user `stage`}}/",
+            "direction": "download"
+        },
+        {
+            "type": "file",
+            "source": "/tmp/stderr.log",
             "destination": "output/{{user `stage`}}/",
             "direction": "download"
         },
@@ -212,8 +205,6 @@
                 "customize"
             ],
             "inline": [
-                "sudo \\rm -rf /var/cache/pacman/pkg/*",
-                "sudo fstrim -a",
                 "echo \"%wheel ALL=(ALL) ALL\" | sudo tee /etc/sudoers.d/99_wheel"
             ]
         }

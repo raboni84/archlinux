@@ -1,6 +1,6 @@
 {
     "id": "{{timestamp}}",
-    "date": "{{isotime `2006.01`}}",
+    "date": "{{env `yearmonth`}}",
     "iso": "archlinux-{{user `date`}}.01-x86_64.iso",
     "headless": "true",
     "stage": "bootstrap",

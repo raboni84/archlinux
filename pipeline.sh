@@ -4,7 +4,7 @@ set -uo pipefail
 set +o history
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
-yearmonth=$(date +%Y.%m)
+yearmonth=$(date -d "`date +%Y%m%d` - 4 days" +%Y.%m)
 bootonly=""
 withpxe=""
 forcebuild=""
@@ -50,28 +50,28 @@ mkdir -p output pxe
 
 if [[ ${graphicalenv} =~ "YES" ]]; then
   if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-desktop*.ova" -type f)" ]; then
-    packer build -force -var-file=arch-bootstrap-vars.json -only=bootstrap archlinux.json
+    yearmonth=$yearmonth packer build -force -var-file=arch-bootstrap-vars.json -only=bootstrap archlinux.json
   fi
 else
   if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-console*.ova" -type f)" ]; then
-    packer build -force -var-file=arch-bootstrap-ng-vars.json -only=bootstrap archlinux.json
+    yearmonth=$yearmonth packer build -force -var-file=arch-bootstrap-ng-vars.json -only=bootstrap archlinux.json
   fi
 fi
 
 if [[ -z ${bootonly} ]]; then
   if [[ ${graphicalenv} =~ "YES" ]]; then
     if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-desktop*.ova" -type f)" ]; then
-      packer build -force -var-file=arch-userbase-vars.json -only=customize archlinux.json
+      yearmonth=$yearmonth packer build -force -var-file=arch-userbase-vars.json -only=customize archlinux.json
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
-      packer build -force -var-file=arch-pxe-userbase-vars.json -only=pxeboot archlinux.json
+      yearmonth=$yearmonth packer build -force -var-file=arch-pxe-userbase-vars.json -only=pxeboot archlinux.json
     fi
   else
     if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-console*.ova" -type f)" ]; then
-      packer build -force -var-file=arch-userbase-ng-vars.json -only=customize archlinux.json
+      yearmonth=$yearmonth packer build -force -var-file=arch-userbase-ng-vars.json -only=customize archlinux.json
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
-      packer build -force -var-file=arch-pxe-userbase-ng-vars.json -only=pxeboot archlinux.json
+      yearmonth=$yearmonth packer build -force -var-file=arch-pxe-userbase-ng-vars.json -only=pxeboot archlinux.json
     fi
   fi
 fi

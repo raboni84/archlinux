@@ -441,6 +441,3 @@ EOF
     ;;
   esac
 done
-
-### we are done with userbase ###
-sync

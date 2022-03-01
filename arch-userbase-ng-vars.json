@@ -1,6 +1,6 @@
 {
     "id": "{{timestamp}}",
-    "date": "{{isotime `2006.01`}}",
+    "date": "{{env `yearmonth`}}",
     "headless": "true",
     "stage": "userbase",
     "old_stage": "bootstrap",

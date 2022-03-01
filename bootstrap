@@ -443,6 +443,3 @@ fi
 sed -i 's/^#\?GRUB_GFXMODE=.*/GRUB_GFXMODE=auto/' /mnt/etc/default/grub
 sed -i 's/^#\?GRUB_SAVEDEFAULT=.*/GRUB_SAVEDEFAULT="true"/' /mnt/etc/default/grub
 mnt_cmd grub-mkconfig -o /boot/grub/grub.cfg
-
-### we are done with the basic steps ###
-sync
