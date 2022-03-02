@@ -4,7 +4,7 @@ set -uo pipefail
 set +o history
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
-yearmonth=$(date -d "`date +%Y%m%d` - 4 days" +%Y.%m)
+yearmonth=$(date -d "`date +%Y%m%d` - 1 days" +%Y.%m)
 bootonly=""
 withpxe=""
 forcebuild=""
