@@ -6,10 +6,10 @@
 readarray -t devicelist < <(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
 if [[ ! ${AUTO} =~ "YES" ]]; then
   echo "Select installation disk:"
-  select device in "${devicelist[@]}"
+  select opt in "${devicelist[@]}"
   do
-    if [ ! -z "$device" ]; then
-      device=$(echo "$device" | cut -d' ' -f1)
+    if [ ! -z "$opt" ]; then
+      device=$(echo "$opt" | cut -d' ' -f1)
       break
     fi
   done

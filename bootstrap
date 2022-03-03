@@ -16,29 +16,11 @@ SCRIPTPATH=`dirname "$SCRIPT"`
 exec 1> >(tee "/tmp/stdout.log")
 exec 2> >(tee "/tmp/stderr.log")
 
-pacman_update_unsafe() {
-  pacman -Syy --needed --noconfirm --overwrite '*' --color=auto $@
-}
-pacman_need_unsafe() {
-  pacman -S --needed --noconfirm --overwrite '*' --color=auto $@
-}
-partial_pacman_need_unsafe() {
-  while (( "$#" )); do
-    pacman -S --needed --noconfirm --color=auto --overwrite '*' $1
-    local deps=$(LC_ALL=C pacman -Si $1 2>/dev/null | grep 'Depends On' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
-    for pkg in $deps; do
-      local reqs=$(LC_ALL=C pacman -Sii $pkg 2>/dev/null | grep 'Required By' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
-      local explicit=$( ( pacman -Qqe; echo -e "$reqs" ) | sort | uniq -d )
-      pacman -S --needed --noconfirm --color=auto --overwrite '*' $explicit
-    done
-    shift
-  done
-}
 mnt_cmd() {
   arch-chroot /mnt $@
 }
-mnt_pacman_update_unsafe() {
-  arch-chroot /mnt pacman -Syy --needed --noconfirm --color=auto $@
+mnt_pacman_update() {
+  arch-chroot /mnt pacman -Syu --needed --noconfirm --color=auto $@
 }
 mnt_pacman_need() {
   arch-chroot /mnt pacman -S --needed --noconfirm --color=auto $@
@@ -109,7 +91,7 @@ sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen
 echo "LANG=de_DE.UTF-8" > /etc/locale.conf
 rm /etc/localtime || true
-ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+ln -s /usr/share/zoneinfo/CET /etc/localtime
 hwclock --systohc --utc
 loadkeys de-latin1-nodeadkeys
 echo "KEYMAP=de-latin1-nodeadkeys" > /etc/vconsole.conf
@@ -163,7 +145,7 @@ fi
 EOF
 chmod +x "/mnt/usr/bin/mirror_update"
 mnt_cmd mirror_update
-mnt_pacman_update_unsafe
+mnt_pacman_update
 
 # libxft-bgra needs to be first because of weird dependency problems with fonts
 mnt_pacman_need linux linux-headers linux-firmware nano base-devel \
@@ -436,7 +418,7 @@ echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/99_wheel
 sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /mnt/etc/locale.gen
 mnt_cmd locale-gen
 echo "LANG=de_DE.UTF-8" > /mnt/etc/locale.conf
-ln -s /usr/share/zoneinfo/Europe/Berlin /mnt/etc/localtime
+ln -s /usr/share/zoneinfo/CET /mnt/etc/localtime
 mnt_cmd hwclock --systohc --utc
 mnt_cmd loadkeys de-latin1-nodeadkeys
 echo "KEYMAP=de-latin1-nodeadkeys" > /mnt/etc/vconsole.conf

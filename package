@@ -12,21 +12,6 @@ trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 exec 1> >(tee "/tmp/stdout.log")
 exec 2> >(tee "/tmp/stderr.log")
 
-pacman_update_unsafe() {
-  pacman -Syy --noconfirm --color=auto $@
-}
-partial_pacman_need_unsafe() {
-  while (( "$#" )); do
-    pacman -S --needed --noconfirm --color=auto --overwrite '*' $1
-    local deps=$(LC_ALL=C pacman -Si $1 2>/dev/null | grep 'Depends On' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
-    for pkg in $deps; do
-      local reqs=$(LC_ALL=C pacman -Sii $pkg 2>/dev/null | grep 'Required By' | cut -d ':' -f 2 | xargs | tr ' ' '\n')
-      local explicit=$( ( pacman -Qqe; echo -e "$reqs" ) | sort | uniq -d )
-      pacman -S --needed --noconfirm --color=auto --overwrite '*' $explicit
-    done
-    shift
-  done
-}
 mnt_cmd() {
   arch-chroot /mnt $@
 }
@@ -73,9 +58,6 @@ curl -s 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_
   tee /etc/pacman.d/mirrorlist
 # resize tmpfs
 mount -o remount,size=80% /run/archiso/cowspace
-# update repo databases and install basic programs for setup
-pacman_update_unsafe
-partial_pacman_need_unsafe dialog lshw jq
 systemctl start vboxservice
 
 ### set regionals for installation system ###
@@ -83,15 +65,21 @@ sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen
 echo "LANG=de_DE.UTF-8" > /etc/locale.conf
 rm /etc/localtime || true
-ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+ln -s /usr/share/zoneinfo/CET /etc/localtime
 hwclock --systohc --utc
 loadkeys de-latin1-nodeadkeys
 echo "KEYMAP=de-latin1-nodeadkeys" > /etc/vconsole.conf
 
-devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+readarray -t devicelist < <(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  device=$(dialog --stdout --menu "Select installation disk" 0 0 0 ${devicelist}) || exit 1
-  clear
+  echo "Select installation disk:"
+  select opt in "${devicelist[@]}"
+  do
+    if [ ! -z "$opt" ]; then
+      device=$(echo "$opt" | cut -d' ' -f1)
+      break
+    fi
+  done
 fi
 
 part_efi="$(ls ${device}* | grep -E "^${device}p?1$")"
@@ -102,9 +90,11 @@ data_id="data"
 volgrp_id="volgrp"
 
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  data_password=$(dialog --stdout --insecure --passwordbox "Enter password for encrypted ${data_id} partition:\n\
-  (leave empty for no encryption)" 0 0) || exit 1
-  clear
+  echo -en "Enter password for encrypted ${data_id} partition\n\
+  (leave empty for no encryption): "
+  read data_password
+  tput cuu1; tput el
+  echo -e "  (leave empty for no encryption): "
 fi
 if [[ ! -z "$data_password" ]]; then
   echo -n "${data_password}" | (cryptsetup -q open ${part_data} ${data_id} -d -)
