@@ -17,7 +17,10 @@ exec 1> >(tee "/tmp/stdout.log")
 exec 2> >(tee "/tmp/stderr.log")
 
 pacman_update_unsafe() {
-  pacman -Syy --needed --noconfirm --color=auto $@
+  pacman -Syy --needed --noconfirm --overwrite '*' --color=auto $@
+}
+pacman_need_unsafe() {
+  pacman -S --needed --noconfirm --overwrite '*' --color=auto $@
 }
 partial_pacman_need_unsafe() {
   while (( "$#" )); do
@@ -99,9 +102,6 @@ curl -s 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_
   tee /etc/pacman.d/mirrorlist
 # resize tmpfs
 mount -o remount,size=80% /run/archiso/cowspace
-# update repo databases and install basic programs for setup
-pacman_update_unsafe archlinux-keyring
-partial_pacman_need_unsafe dialog lshw jq
 systemctl start vboxservice
 
 ### set regionals for installation system ###
@@ -116,13 +116,23 @@ echo "KEYMAP=de-latin1-nodeadkeys" > /etc/vconsole.conf
 
 ### final warning ###
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  if ! dialog --cr-wrap --yesno "WARNING: this script will destroy all data on the selected disk.\n\
-  Are you sure?" 10 50; then
-    clear
-    echo >&2 "aborted"
-    exit 1
-  fi
-  clear
+  echo -e "WARNING: this script will destroy all data on the selected disk.\nAre you sure?"
+  options=("yes" "no")
+  select opt in "${options[@]}"
+  do
+    case $opt in
+      "yes")
+        break
+        ;;
+      "no")
+        clear
+        echo >&2 "aborted"
+        exit 1
+        ;;
+      *)
+        ;;
+    esac
+  done
 fi
 
 ### partitioning steps ###
@@ -215,6 +225,9 @@ EOF
 
 # enable cifs kernel support
 echo "cifs" | tee /mnt/etc/modules-load.d/cifs.conf
+
+# list all hardware
+LSHARDWARE=$(mnt_cmd lshw -xml -quiet)
 
 # detect wireless device
 WIRELESS=$(echo ${LSHARDWARE} | xmllint --xpath 'count(//capability[@id="wireless"])' -)
@@ -392,10 +405,18 @@ fi
 
 # configure user settings
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  root_password=$(dialog --stdout --insecure --passwordbox "Enter password for root" 0 0) || exit 1
-  user_name=$(dialog --stdout --inputbox "Choose a username" 0 0) || exit 1
-  user_password=$(dialog --stdout --insecure --passwordbox "Enter password for ${user_name}" 0 0) || exit 1
-  clear
+  echo -n "Enter password for root: "
+  read root_password
+  tput cuu1; tput el
+  echo "Enter password for root: "
+  
+  echo -n "Choose a username: "
+  read user_name
+  
+  echo -n "Enter password for ${user_name}: "
+  read user_password
+  tput cuu1; tput el
+  echo "Enter password for ${user_name}: "
 fi
 user_groups="wheel"
 # enable VirtualBox Guest Utils when needed

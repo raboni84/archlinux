@@ -3,17 +3,20 @@
 # partitioning in bootstrap
 #
 
-devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+readarray -t devicelist < <(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  device=$(dialog --stdout --menu "Select installation disk" 0 0 0 ${devicelist}) || exit 1
-  clear
+  echo "Select installation disk:"
+  select device in "${devicelist[@]}"
+  do
+    if [ ! -z "$device" ]; then
+      device=$(echo "$device" | cut -d' ' -f1)
+      break
+    fi
+  done
 fi
 
-# list all hardware
-LSHARDWARE=$(lshw -xml -quiet)
-
 ### Setup the disk and partitions ###
-ramsize=$(($(echo ${LSHARDWARE} | xmllint --xpath '//node[@id="memory" and @class="memory"]/size/text()' -) / (1024 * 1024)))
+ramsize=$(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024))
 if [ ${ramsize} -gt 16384 ]; then
   swapsize=20480
 else
@@ -21,7 +24,7 @@ else
 fi
 
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  if ! dialog --cr-wrap --yesno "The partition table will be:\n\n\
+  echo -e "The partition table will be:\n\n\
 ${device} [gpt]\n\
 ├─/boot/EFI    fat32  ╟─     4MiB ─   132MiB ─╢\n\
 ├─grub                ╟─   132MiB ─   134MiB ─╢\n\
@@ -32,12 +35,23 @@ ${device} [gpt]\n\
     ├─home     /home\n\
     ├─var      /var\n\
     ├─root     /root\n\
-    └─srv      /srv" 17 55; then
-    clear
-    echo >&2 "aborted"
-    exit 1
-  fi
-  clear
+    └─srv      /srv\n"
+  options=("yes" "no")
+  select opt in "${options[@]}"
+  do
+    case $opt in
+      "yes")
+        break
+        ;;
+      "no")
+        clear
+        echo >&2 "aborted"
+        exit 1
+        ;;
+      *)
+        ;;
+    esac
+  done
 fi
 
 data_id="data"
@@ -66,9 +80,11 @@ fuser -km ${part_root} || true
 fuser -km ${part_data} || true
 
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  data_password=$(dialog --stdout --insecure --passwordbox "Enter password for encrypted ${data_id} partition:\n\
-  (leave empty for no encryption)" 0 0) || exit 1
-  clear
+  echo -en "Enter password for encrypted ${data_id} partition\n\
+  (leave empty for no encryption): "
+  read data_password
+  tput cuu1; tput el
+  echo -e "  (leave empty for no encryption): "
 fi
 dd if=/dev/zero of=${part_data} bs=1M count=32 iflag=fullblock status=progress
 if [[ ! -z "$data_password" ]]; then
