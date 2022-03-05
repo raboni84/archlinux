@@ -39,7 +39,7 @@ fi
 
 # start display environment when logged in and configuration exists
 if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
-  exec startx
+  startx
 fi
 EOF
 chmod 0600 "/mnt/etc/skel/.bash_profile"
