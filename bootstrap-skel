@@ -100,11 +100,7 @@ function aur() {
         git config user.email ""
         git pull --no-rebase || true
         git submodule update --init --recursive || true
-		    (. PKGBUILD; if [ ! -z "\${makedepends[@]}" ]; then
-          sudo pacman -S --needed --noconfirm --asdeps --color=auto \${makedepends[@]}
-        fi; if [ ! -z "\${depends[@]}" ]; then
-          sudo pacman -S --needed --noconfirm --asdeps --color=auto \${depends[@]}
-        fi)
+		    (. PKGBUILD; sudo pacman -S --needed --noconfirm --asdeps --color=auto \${makedepends[@]} \${depends[@]} || true)
         if [ \$BUILD -eq 0 ]; then
           makepkg -s
         else
