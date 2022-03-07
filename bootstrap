@@ -30,6 +30,37 @@ mnt_cmd_as_user() {
   shift
   arch-chroot /mnt su - ${asuser} -c "$@"
 }
+ask_passwd() {
+  # source: https://stackoverflow.com/a/63503388
+  charcount='0'
+  prompt="${1}: "
+  reply=''
+  while IFS='' read -n '1' -p "${prompt}" -r -s 'char'; do
+    case "${char}" in
+      # Handles NULL
+      ( $'\000' )
+        break
+        ;;
+      # Handles BACKSPACE and DELETE
+      ( $'\010' | $'\177' )
+        if (( charcount > 0 )); then
+            prompt=$'\b \b'
+            reply="${reply%?}"
+            (( charcount-- ))
+        else
+            prompt=''
+        fi
+        ;;
+      ( * )
+        prompt='*'
+        reply+="${char}"
+        (( charcount++ ))
+        ;;
+    esac
+  done
+  printf '\n' >&2
+  printf '%s\n' "${reply}"
+}
 
 # initialize root
 USER="$(id -un)"
@@ -387,18 +418,12 @@ fi
 
 # configure user settings
 if [[ ! ${AUTO} =~ "YES" ]]; then
-  echo -n "Enter password for root: "
-  read root_password
-  tput cuu1; tput el
-  echo "Enter password for root: "
+  root_password=$(ask_passwd "Enter password for root")
   
   echo -n "Choose a username: "
   read user_name
   
-  echo -n "Enter password for ${user_name}: "
-  read user_password
-  tput cuu1; tput el
-  echo "Enter password for ${user_name}: "
+  user_password=$(ask_passwd "Enter password for ${user_name}")
 fi
 user_groups="wheel"
 # enable VirtualBox Guest Utils when needed
