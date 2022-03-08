@@ -88,7 +88,7 @@
             "boot_command": [
                 "root<enter><wait2>toor<enter><wait5>",
                 "loadkezs us<enter><wait1>",
-                "echo \"%wheel ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/99_wheel<enter><wait2>",
+                "sed -i 's/:wheel/nopass :wheel/' /etc/doas.conf<enter><wait2>",
                 "exit<enter><wait2>"
             ],
             "ssh_username": "{{user `prov_user`}}",
@@ -215,7 +215,7 @@
             ],
             "inline": [
                 "sudo /usr/bin/rm -rf /var/cache/pacman/pkg/*",
-                "echo \"%wheel ALL=(ALL) ALL\" | sudo tee /etc/sudoers.d/99_wheel"
+                "sudo sed -i 's/nopass :wheel/:wheel/' /etc/doas.conf"
             ]
         }
     ]

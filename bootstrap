@@ -155,7 +155,14 @@ fi
 )
 
 #### Install and configure the basic system ###
-echo "" | (pacstrap -i /mnt base sudo)
+echo "" | (pacstrap -i /mnt base opendoas)
+ln -s /usr/bin/doas /mnt/usr/bin/sudo
+tee "/mnt/etc/doas.conf" <<EOF
+permit nopass :root
+permit setenv { XAUTHORITY LANG LC_ALL } :wheel
+EOF
+chmod 0400 /mnt/etc/doas.conf
+sed -i 's/^#IgnorePkg.*/IgnorePkg   = sudo/' /mnt/etc/pacman.conf
 
 # enable multilib, custom-user-repo and fix the /mnt mirrorlist
 sed -i '/^#\[multilib\]$/{N;s/^#\[multilib\]\n#Include.*/[multilib]\nInclude = \/etc\/pacman.d\/mirrorlist\/\n\n[aur]\nSigLevel = Optional DatabaseOptional\nServer = https:\/\/raboni84.github.io\/$repo\/$arch/;}' /mnt/etc/pacman.conf
@@ -178,8 +185,14 @@ chmod +x "/mnt/usr/bin/mirror_update"
 mnt_cmd mirror_update
 mnt_pacman_update
 
+# install base-devel without sudo
+# (n) ignore sudo package confirmation
+# (↲) install all other
+# (y) proceed with installation
+echo -en "n\n\ny\n" | (mnt_cmd pacman -S base-devel --needed --ignore sudo)
+
 # libxft-bgra needs to be first because of weird dependency problems with fonts
-mnt_pacman_need linux linux-headers linux-firmware nano base-devel \
+mnt_pacman_need linux linux-headers linux-firmware nano sudo-dummy \
   htop grub efibootmgr dosfstools mtools dialog git ufw \
   bash-completion openssh lvm2 pv lshw libxml2 jq \
   dotnet-host dotnet-sdk dotnet-runtime aspnet-runtime \
@@ -437,7 +450,6 @@ done
 echo -e "${root_password}\n${root_password}" | (mnt_cmd passwd)
 mnt_cmd useradd -m -g users -G ${user_groups} ${user_name}
 echo -e "${user_password}\n${user_password}" | (mnt_cmd passwd ${user_name})
-echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/99_wheel
 
 ### set regionals for target system ###
 sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /mnt/etc/locale.gen
