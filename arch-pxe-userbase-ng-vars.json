@@ -5,11 +5,11 @@
     "headless": "true",
     "stage": "package",
     "old_stage": "userbase",
-    "ova_source": "output/archlinux-{{user `old_stage`}}-console-{{user `date`}}.01-x86_64.ova",
+    "ovf_source": "output/archlinux-{{user `old_stage`}}-console-{{user `date`}}.01-x86_64.ova",
     "stage_files": "package",
     "stage_cmd": "--auto /dev/sda \"\"",
     "prov_user": "root",
     "prov_pass": "toor",
-    "ova_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}.01-x86_64",
+    "ovf_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}.01-x86_64",
     "vbox_name": "{{user `id`}}"
 }

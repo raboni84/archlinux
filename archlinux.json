@@ -3,7 +3,7 @@
         {
             "name": "bootstrap",
             "type": "virtualbox-iso",
-            "format": "ova",
+            "format": "ovf",
             "iso_url": "{{user `iso`}}",
             "iso_checksum": "none",
             "guest_os_type": "ArchLinux_64",
@@ -23,7 +23,7 @@
             "acpi_shutdown": true,
             "headless": "{{user `headless`}}",
             "output_directory": "output/{{user `stage`}}",
-            "output_filename": "{{user `ova_name`}}",
+            "output_filename": "{{user `ovf_name`}}",
             "vm_name": "{{user `vbox_name`}}",
             "vboxmanage": [
                 [
@@ -81,8 +81,8 @@
         {
             "name": "customize",
             "type": "virtualbox-ovf",
-            "format": "ova",
-            "source_path": "{{user `ova_source`}}",
+            "format": "ovf",
+            "source_path": "{{user `ovf_source`}}",
             "guest_additions_mode": "disable",
             "boot_wait": "1m",
             "boot_command": [
@@ -97,14 +97,14 @@
             "acpi_shutdown": true,
             "headless": "{{user `headless`}}",
             "output_directory": "output/{{user `stage`}}",
-            "output_filename": "{{user `ova_name`}}",
+            "output_filename": "{{user `ovf_name`}}",
             "vm_name": "{{user `vbox_name`}}"
         },
         {
             "name": "pxeboot",
             "type": "virtualbox-ovf",
-            "format": "ova",
-            "source_path": "{{user `ova_source`}}",
+            "format": "ovf",
+            "source_path": "{{user `ovf_source`}}",
             "guest_additions_mode": "disable",
             "boot_wait": "1m",
             "boot_command": [
@@ -116,7 +116,7 @@
             "acpi_shutdown": true,
             "headless": "{{user `headless`}}",
             "output_directory": "output/{{user `stage`}}",
-            "output_filename": "{{user `ova_name`}}",
+            "output_filename": "{{user `ovf_name`}}",
             "vm_name": "{{user `vbox_name`}}",
             "skip_export": true,
             "vboxmanage": [
