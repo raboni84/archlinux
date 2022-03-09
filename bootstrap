@@ -158,7 +158,7 @@ fi
 echo "" | (pacstrap -i /mnt base opendoas)
 ln -s /usr/bin/doas /mnt/usr/bin/sudo
 tee "/mnt/etc/doas.conf" <<EOF
-permit nopass :root
+permit nopass keepenv root
 permit setenv { XAUTHORITY LANG LC_ALL } :wheel
 EOF
 chmod 0400 /mnt/etc/doas.conf
