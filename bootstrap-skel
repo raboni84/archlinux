@@ -273,6 +273,12 @@ exec i3
 EOF
 chmod 0600 "/mnt/etc/skel/.xinitrc"
 
+tee "/mnt/etc/skel/.nanorc" <<EOF
+include /usr/share/nano/*.nanorc
+include /usr/share/nano/extra/*.nanorc
+EOF
+chmod 0600 "/mnt/etc/skel/.nanorc"
+
 mkdir -p "/mnt/etc/skel/.screenlayout"
 chmod 0700 "/mnt/etc/skel/.screenlayout"
 tee "/mnt/etc/skel/.screenlayout/default.sh" <<EOF
