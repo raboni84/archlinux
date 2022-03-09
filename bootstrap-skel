@@ -147,6 +147,9 @@ function anyupdates() {
 }
 export -f anyupdates
 
+# configure completion for doas
+complete -cf doas
+
 # alias and color stuff
 alias ls='ls --color=auto'
 alias ll='ls -l --color=auto'
