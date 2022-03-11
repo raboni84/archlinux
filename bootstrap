@@ -3,7 +3,7 @@
 # It can be started by executing the following commands:
 #   curl -sL https://raw.githubusercontent.com/raboni84/arch/master/bootstrap > bootstrap
 #   chmod +x bootstrap
-#   ./bootstrapä
+#   ./bootstrap
 
 set -uo pipefail
 set +o history
