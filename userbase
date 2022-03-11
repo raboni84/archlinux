@@ -175,9 +175,17 @@ for choice in $OPTCHOICE; do
         dotnet publish -r linux-x64 --self-contained || true
         dotnet publish -r win-x64 --self-contained || true
         dotnet publish -r osx-x64 --self-contained || true
+        dotnet new console -f netcoreapp3.1 --force || true
+        sed -i -e 's/<TargetFramework>.*<\/TargetFramework>/<TargetFramework>net5.0<\/TargetFramework>/' csharp.csproj
+        dotnet publish -r linux-x64 --self-contained || true
+        dotnet publish -r win-x64 --self-contained || true
+        dotnet publish -r osx-x64 --self-contained || true
         dotnet new classlib --force || true
+        dotnet new classlib -f netcoreapp3.1 --force || true
         dotnet new webapp --force || true
+        dotnet new webapp -f netcoreapp3.1 --force || true
         dotnet new webapi --force || true
+        dotnet new webapi -f netcoreapp3.1 --force || true
       popd
       rm -rf /tmp/csharp
       # c++
