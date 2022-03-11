@@ -109,6 +109,7 @@ function checklist_menu() {
 OPTIONS=(devenv "Development" on
   cyber "CyberChef" on
   vbox "VirtualBox" off
+  qklv "qemu/kvm/libvirt" off
   dckr "Docker" off
   steam "Steam" off
   retro "RetroArch" off
@@ -226,6 +227,21 @@ for choice in $OPTCHOICE; do
   case $choice in
     vbox)
       pacman_need virtualbox virtualbox-host-dkms
+    ;;
+  esac
+done
+
+# qemu / kvm / virt-manager
+for choice in $OPTCHOICE; do
+  case $choice in
+    qklv)
+      pacman_need libvirt qemu virt-manager virt-viewer dnsmasq vde2 bridge-utils
+      sudo systemctl enable --now libvirtd
+      sudo sed -i 's/^#\?unix_sock_group.*/unix_sock_group = "libvirt"/' /etc/libvirt/libvirtd.conf
+      sudo sed -i 's/^#\?unix_sock_ro_perms.*/unix_sock_ro_perms = "0777"/' /etc/libvirt/libvirtd.conf
+      sudo sed -i 's/^#\?unix_sock_rw_perms.*/unix_sock_rw_perms = "0770"/' /etc/libvirt/libvirtd.conf
+      sudo usermod -aG libvirt ${USER}
+      sudo systemctl restart libvirtd
     ;;
   esac
 done
