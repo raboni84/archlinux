@@ -117,6 +117,7 @@ OPTIONS=(devenv "Development" on
   ytdlp "YT dwnld" off
   mkmkv "MakeMKV" off
   signal "Signal" off
+  nwsbt "Newsboat" off
   gitsrv "Git Server" off
   websrv "Web Server" off)
 if [[ ! ${AUTO} =~ "YES" ]]; then
@@ -389,6 +390,20 @@ for choice in $OPTCHOICE; do
   case $choice in
     signal)
       pacman_need signal-desktop
+    ;;
+  esac
+done
+
+# newsboat
+for choice in $OPTCHOICE; do
+  case $choice in
+    nwsbt)
+      pacman_need newsboat
+      mkdir -p "$HOME/.newsboat"
+      tee "$HOME/.newsboat/urls" <<EOF
+https://www.tagesschau.de/xml/atom/
+https://www.heise.de/rss/heise-atom.xml
+EOF
     ;;
   esac
 done
