@@ -226,7 +226,8 @@ mnt_cmd fc-cache -f -v
 
 # enable rdp
 mnt_pacman_need xrdp
-mnt_cmd systemctl enable xrdp xrdp-sesman
+# not needed for wayland
+# mnt_cmd systemctl enable xrdp xrdp-sesman
 sed -i 's/^# exec xterm/exec \/bin\/bash --login -i ~\/.xinitrc/' /mnt/etc/xrdp/startwm.sh
 
 ### set regionals for target system ###
@@ -240,3 +241,6 @@ Section "InputClass"
     Option "XkbVariant" "nodeadkeys"
 EndSection
 EOF
+
+### road to wayland
+mnt_pacman_need sway swayidle swaylock wdisplays xorg-xwayland
