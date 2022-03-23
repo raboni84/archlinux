@@ -7,7 +7,7 @@ mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock \
   i3-wm nitrogen brightnessctl gammastep arandr dunst libnotify xarchiver \
   libinput xf86-input-libinput xorg-xinput \
   archlinux-wallpaper elementary-wallpapers papirus-icon-theme flameshot \
-  ttf-dejavu ttf-liberation ttf-font-awesome ttf-hanazono ttf-hannom ttf-baekmuk \
+  ttf-dejavu-emojiless ttf-liberation ttf-font-awesome ttf-hanazono ttf-hannom ttf-baekmuk \
   libreoffice-fresh nomacs krita smplayer evolution gnome-keyring \
   freerdp notepadqq gitg firefox keepassxc llpp pdfpc \
   pcmanfm ca-certificates ca-certificates-mozilla ca-certificates-utils \
@@ -62,7 +62,7 @@ pref("font.name.sans-serif.x-western", "Liberation Sans");
 pref("font.name.monospace.x-western", "Liberation Mono");
 pref("font.minimum-size.x-western", 9);
 lockPref("font.default.x-western", "Liberation Serif");
-lockPref("font.name-list.emoji", "Noto Color Emoji");
+lockPref("font.name-list.emoji", "OpenMoji");
 // the user should not be able to display all passwords
 lockPref("pref.privacy.disable_button.view_passwords", true);
 lockPref("pref.privacy.disable_button.view_passwords_exceptions", true);
@@ -115,37 +115,37 @@ tee /mnt/etc/fonts/conf.d/69-emoji.conf <<EOF
   <alias binding="weak">
     <family>sans-serif</family>
     <prefer>
-      <family>Noto Color Emoji</family>
+      <family>OpenMoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>serif</family>
     <prefer>
-      <family>Noto Color Emoji</family>
+      <family>OpenMoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>monospace</family>
     <prefer>
-      <family>Noto Color Emoji</family>
+      <family>OpenMoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>DejaVu Sans</family>
     <prefer>
-      <family>Noto Color Emoji</family>
+      <family>OpenMoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>DejaVu Serif</family>
     <prefer>
-      <family>Noto Color Emoji</family>
+      <family>OpenMoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>DejaVu Sans Mono</family>
     <prefer>
-      <family>Noto Color Emoji</family>
+      <family>OpenMoji</family>
     </prefer>
   </alias>
   <match target="scan">
