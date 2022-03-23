@@ -243,4 +243,4 @@ EndSection
 EOF
 
 ### road to wayland
-mnt_pacman_need sway swayidle swaylock wdisplays xorg-xwayland
+mnt_pacman_need sway swayidle swaylock wdisplays xorg-xwayland foot
