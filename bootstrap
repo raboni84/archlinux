@@ -208,7 +208,7 @@ mnt_cmd systemctl enable systemd-networkd systemd-resolved \
   systemd-timesyncd sshd ufw fstrim.timer
 
 # install xkcd-pass python module
-mnt_cmd python -m pip install xkcd-pass
+mnt_cmd python -m pip install xkcd-pass || true
 
 tee /mnt/etc/systemd/network/20-wired.network <<EOF
 [Match]

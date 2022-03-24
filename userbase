@@ -195,7 +195,7 @@ for choice in $OPTCHOICE; do
       devenv_install_package_rundeps "$csharppath"
       # python
       code --install-extension ms-python.python --force
-      pip install pylint
+      pip install pylint || true
       # xml
       code --install-extension dotjoshjohnson.xml --force
       # better comments
