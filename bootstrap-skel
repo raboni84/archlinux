@@ -331,6 +331,38 @@ fi
 EOF
 chmod +x "/mnt/etc/skel/.local/bin/slock_run"
 
+tee "/mnt/etc/skel/.local/bin/locksession_run" <<EOF
+#!/usr/bin/env bash
+
+should_lock() {
+  if [[ \$(pactl list sink-inputs | tr -d '\\n' | sed -e 's/\\s\\+//g' | grep -c '[cC]orked:no[mM]ute:no[vV]olume:.*[1-9][0-9]*%/') -gt 0 ]]; then
+    return 1
+  fi
+  return 0
+}
+
+if should_lock; then
+  loginctl lock-session
+fi
+EOF
+chmod +x "/mnt/etc/skel/.local/bin/locksession_run"
+
+tee "/mnt/etc/skel/.local/bin/displayoff_run" <<EOF
+#!/usr/bin/env bash
+
+should_turn_off() {
+  if [[ \$(pactl list sink-inputs | tr -d '\\n' | sed -e 's/\\s\\+//g' | grep -c '[cC]orked:no[mM]ute:no[vV]olume:.*[1-9][0-9]*%/') -gt 0 ]]; then
+    return 1
+  fi
+  return 0
+}
+
+if should_turn_off; then
+  swaymsg "output * dpms off"
+fi
+EOF
+chmod +x "/mnt/etc/skel/.local/bin/displayoff_run"
+
 tee "/mnt/etc/skel/.local/bin/i3MoveNext" <<EOF
 #!/usr/bin/env bash
 
@@ -1006,8 +1038,8 @@ exec_always swaymsg output "*" bg \\
 
 # autorun programs
 exec swayidle -w \\
-  timeout 300 'loginctl lock-session' \\
-  timeout 600 'swaymsg "output * dpms off"' \\
+  timeout 300 'locksession_run' \\
+  timeout 600 'displayoff_run' \\
   resume 'swaymsg "output * dpms on"' \\
   before-sleep 'loginctl lock-session' \\
   lock 'swaylock -f -c 000000'
