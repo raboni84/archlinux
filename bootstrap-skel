@@ -1118,7 +1118,7 @@ default_border normal 3
 default_floating_border normal 3
 for_window [floating] move position center
 for_window [app_id="launcher-desktop"] floating enable, border none, resize set 30ppt 60ppt
-for_window [app_id="wdisplays"] floating enable
+for_window [app_id="wdisplays"] floating enable, border none, resize set 60ppt 60ppt
 
 bindsym \$mod+f fullscreen toggle
 bindsym \$mod+m floating toggle
