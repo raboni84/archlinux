@@ -980,7 +980,7 @@ mkdir -p "/mnt/etc/skel/.config/sway"
 tee "/mnt/etc/skel/.config/sway/config" <<EOF
 # keyboard configuration
 input type:keyboard {
-  xkb_layout  de
+  xkb_layout  de_mod
   xkb_model   pc105
   xkb_variant nodeadkeys
 }
@@ -1202,6 +1202,16 @@ for elem in $GPUS; do
     break
   fi
 done
+
+mkdir -p "/mnt/etc/skel/.xkb/symbols"
+tee "/mnt/etc/skel/.xkb/symbols/de_mod" <<EOF
+default partial alphanumeric_keys modifier_keys
+xkb_symbols "nodeadkeys" {
+    include "de(nodeadkeys)"
+    name[Group1] = "Modified de nodeadkeys";
+    key <MENU> { [ Super_R ] };
+};
+EOF
 
 mkdir -p "/mnt/etc/skel/.config/libfm"
 tee "/mnt/etc/skel/.config/libfm/libfm.conf" <<EOF
