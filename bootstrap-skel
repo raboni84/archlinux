@@ -47,6 +47,10 @@ fi
 EOF
 chmod 0600 "/mnt/etc/skel/.bash_profile"
 sudo cp "/mnt/etc/skel/.bash_profile" /mnt/root/
+for elem in $GPUS; do
+  if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    sed -i 's/exec sway/export WLR_NO_HARDWARE_CURSORS=1\n  exec sway/' /mnt/etc/skel/.bash_profile
+
 
 tee "/mnt/etc/skel/.bashrc" <<EOF
 #
