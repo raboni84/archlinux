@@ -355,6 +355,17 @@ fi
 EOF
 chmod +x "/mnt/etc/skel/.local/bin/locksession_run"
 
+tee "/mnt/etc/skel/.local/bin/sleep_run" <<EOF
+#!/usr/bin/env bash
+
+if pgrep -x swaylock; then
+  if [ $(cat /sys/class/power_supply/AC/online) -eq 0 ]; then
+    systemctl suspend-then-hibernate
+  fi
+fi
+EOF
+chmod +x "/mnt/etc/skel/.local/bin/sleep_run"
+
 
 tee "/mnt/etc/skel/.local/bin/i3MoveNext" <<EOF
 #!/usr/bin/env bash
@@ -1031,7 +1042,8 @@ exec_always swaymsg output "*" bg \\
 
 # autorun programs
 exec swayidle -w \\
-  timeout 300 'locksession_run' \\
+  timeout 600 'locksession_run' \\
+  timeout 1800 'sleep_run' \\
   resume 'swaymsg "output * dpms on"' \\
   before-sleep 'loginctl lock-session' \\
   lock 'swaylock -f -c 000000'
