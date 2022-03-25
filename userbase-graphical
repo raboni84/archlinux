@@ -56,3 +56,6 @@ xdg-mime default xarchiver.desktop 'application/x-zip'
 xdg-mime default xarchiver.desktop 'application/x-zip-compressed'
 xdg-mime default xarchiver.desktop 'application/zip'
 xdg-mime default xarchiver.desktop 'application/vnd.ms-cab-compressed'
+
+# set xdg-settings default applications
+xdg-settings set default-web-browser firefox.desktop
