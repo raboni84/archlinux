@@ -346,7 +346,7 @@ should_lock() {
 }
 
 if should_lock; then
- if ! pgrep -x swaylock; then
+  if ! pgrep -x swaylock; then
     loginctl lock-session
     sleep 0.1
   fi
@@ -1041,12 +1041,16 @@ exec_always swaymsg output "*" bg \\
   fill
 
 # autorun programs
-exec swayidle -w \\
+set \$displayon 'swaymsg "output * dpms on"'
+exec_always swayidle -w \\
   timeout 600 'locksession_run' \\
+    resume \$displayon \\
   timeout 1800 'sleep_run' \\
-  resume 'swaymsg "output * dpms on"' \\
+    resume \$displayon \\
   before-sleep 'loginctl lock-session' \\
-  lock 'swaylock -f -c 000000'
+    after-resume \$displayon \\
+  lock 'swaylock -f -c 000000' \\
+    unlock \$displayon
 exec gammastep -l manual:51:10 -t 6500:3500 \\
   -b 1:0.75 -m wayland &
 exec flameshot
