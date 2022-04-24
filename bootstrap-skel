@@ -1057,7 +1057,6 @@ exec gammastep -l manual:51:10 -t 6500:3500 \\
   -b 1:0.75 -m wayland &
 exec flameshot
 exec dunst
-exec dbus-update-activation-environment DISPLAY
 
 # Variables
 set \$mod Mod4
