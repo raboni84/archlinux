@@ -1073,7 +1073,7 @@ set \$force_refresh_sysinfo "killall -SIGUSR1 sysinfo"
 set \$helpwnd "notepadqq ~/.local/etc/i3usage.txt"
 
 # Font
-font pango:Sans 11
+font pango:sans 11
 
 ## Key bindings
 # basic
@@ -1158,6 +1158,8 @@ focus_follows_mouse no
 mouse_warping none
 default_border normal 3
 default_floating_border normal 3
+titlebar_border_thickness 0
+titlebar_padding 0
 for_window [floating] move position center
 for_window [app_id="launcher-desktop"] floating enable, border none, resize set 30ppt 60ppt
 for_window [app_id="wdisplays"] floating enable, border none, resize set 60ppt 60ppt
@@ -1228,6 +1230,7 @@ bar {
     position top
     bindsym button4 workspace next
     bindsym button5 workspace prev
+    font pango:sans 11
 
     status_command sysinfo -c -p -j
 
@@ -1322,7 +1325,7 @@ app-id=foot
 title=term
 locked-title=yes
 
-font=monospace:size=7
+font=monospace:size=11
 # font-bold=<bold variant of regular font>
 # font-italic=<italic variant of regular font>
 # font-bold-italic=<bold+italic variant of regular font>
@@ -1332,7 +1335,7 @@ font=monospace:size=7
 # vertical-letter-offset=0
 # underline-offset=<font metrics>
 # box-drawings-uses-font-glyphs=no
-# dpi-aware=yes
+dpi-aware=no
 
 # initial-window-size-pixels=700x500  # Or,
 # initial-window-size-chars=<COLSxROWS>
