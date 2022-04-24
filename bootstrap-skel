@@ -1036,11 +1036,7 @@ input type:touchpad {
 }
 
 # display configuration
-exec_always swaymsg output "*" bg \\
-  \$(find /usr/share/backgrounds -type f \\
-    \\( -not -wholename '*/sway/*' \\) \\
-    \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \\) | shuf -n 1) \\
-  fill
+exec_always wloutput
 
 # autorun programs
 set \$displayon 'swaymsg "output * dpms on"'
