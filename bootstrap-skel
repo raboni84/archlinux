@@ -12,7 +12,7 @@ tee "/mnt/etc/skel/.bash_profile" <<EOF
 [[ -f ~/.bashrc ]] && . ~/.bashrc
 
 # prepare user directory
-if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
+if [[ \$(tty) = /dev/tty1 ]]; then
   if [[ ! -f \$HOME/.ssh/id_ed25519.pub ]]; then
     echo "Generating a ssh key for user '\$USER'."
     mkdir -p \$HOME/.ssh
@@ -37,22 +37,32 @@ if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
   fi
 fi
 
-# start display environment when logged in and configuration exists
-#if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
-#  startx
-#fi
-if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.config/sway/config ]] && [[ -f /usr/bin/sway ]]; then
-  exec sway
-fi
 EOF
-chmod 0600 "/mnt/etc/skel/.bash_profile"
-sudo cp "/mnt/etc/skel/.bash_profile" /mnt/root/
+VIRTUAL_ENV=0
 for elem in $GPUS; do
   if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
-    sed -i 's/exec sway/export WLR_NO_HARDWARE_CURSORS=1\n  exec sway/' /mnt/etc/skel/.bash_profile
+    VIRTUAL_ENV=1
+    tee -a "/mnt/etc/skel/.bash_profile" <<EOF
+if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
+  startx
+fi
+EOF
     break
   fi
 done
+if [ $VIRTUAL_ENV -eq 0 ]; then
+  tee -a "/mnt/etc/skel/.bash_profile" <<EOF
+#if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
+#  startx
+#fi
+if [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.config/sway/config ]] && [[ -f /usr/bin/sway ]]; then
+  exec sway
+fi
+EOF
+fi
+unset VIRTUAL_ENV
+chmod 0600 "/mnt/etc/skel/.bash_profile"
+sudo cp "/mnt/etc/skel/.bash_profile" /mnt/root/
 
 tee "/mnt/etc/skel/.bashrc" <<EOF
 #
