@@ -1,13 +1,13 @@
 {
     "id": "{{timestamp}}",
-    "date": "{{env `yearmonth`}}",
-    "iso": "archlinux-{{user `date`}}.01-x86_64.iso",
+    "date": "{{env `yearmonthday`}}",
+    "iso": "archlinux-{{user `date`}}-x86_64.iso",
     "headless": "true",
     "stage": "bootstrap",
     "stage_files": "bootstrap,bootstrap-partition,bootstrap-graphical,bootstrap-skel",
     "stage_cmd": "--auto /dev/sda \"\" toor user resu",
     "prov_user": "root",
     "prov_pass": "toor",
-    "ovf_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}.01-x86_64",
+    "ovf_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}-x86_64",
     "vbox_name": "{{user `id`}}"
 }

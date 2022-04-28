@@ -1,14 +1,14 @@
 {
     "id": "{{timestamp}}",
-    "date": "{{env `yearmonth`}}",
+    "date": "{{env `yearmonthday`}}",
     "headless": "true",
     "stage": "userbase",
     "old_stage": "bootstrap",
-    "ovf_source": "output/archlinux-{{user `old_stage`}}-desktop-{{user `date`}}.01-x86_64.ovf",
+    "ovf_source": "output/archlinux-{{user `old_stage`}}-desktop-{{user `date`}}-x86_64.ovf",
     "stage_files": "userbase,userbase-graphical",
     "stage_cmd": "--auto devenv cyber",
     "prov_user": "user",
     "prov_pass": "resu",
-    "ovf_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}.01-x86_64",
+    "ovf_name": "../archlinux-{{user `stage`}}-desktop-{{user `date`}}-x86_64",
     "vbox_name": "{{user `id`}}"
 }

@@ -4,7 +4,7 @@ set -uo pipefail
 set +o history
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
-yearmonth=$(date -d "`date +%Y%m%d` - 1 days" +%Y.%m)
+yearmonthday=$(curl -sL "https://archlinux.org/download/" | xmllint --html --xpath '/html/body/div[2]/div[2]/ul[1]/li[1]/text()' - 2>/dev/null | xargs)
 bootonly=""
 withpxe=""
 forcebuild=""
@@ -37,9 +37,9 @@ while [[ $# -gt 0 ]]; do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-wget --server-response --timestamping "https://ftp.halifax.rwth-aachen.de/archlinux/iso/${yearmonth}.01/archlinux-${yearmonth}.01-x86_64.iso"
-wget --server-response --timestamping "https://ftp.halifax.rwth-aachen.de/archlinux/iso/${yearmonth}.01/archlinux-bootstrap-${yearmonth}.01-x86_64.tar.gz"
-wget --server-response --timestamping "https://ftp.halifax.rwth-aachen.de/archlinux/iso/${yearmonth}.01/sha1sums.txt"
+wget --server-response --timestamping "https://ftp.halifax.rwth-aachen.de/archlinux/iso/${yearmonthday}/archlinux-${yearmonthday}-x86_64.iso"
+wget --server-response --timestamping "https://ftp.halifax.rwth-aachen.de/archlinux/iso/${yearmonthday}/archlinux-bootstrap-${yearmonthday}-x86_64.tar.gz"
+wget --server-response --timestamping "https://ftp.halifax.rwth-aachen.de/archlinux/iso/${yearmonthday}/sha1sums.txt"
 while read line; do
     if [ ! -z "$line" ]; then
         echo $line | sha1sum -c -
@@ -50,28 +50,28 @@ mkdir -p output pxe
 
 if [[ ${graphicalenv} =~ "YES" ]]; then
   if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-desktop*.ova" -type f)" ]; then
-    yearmonth=$yearmonth packer build -force -var-file=arch-bootstrap-vars.json -only=bootstrap archlinux.json
+    yearmonthday=$yearmonthday packer build -force -var-file=arch-bootstrap-vars.json -only=bootstrap archlinux.json
   fi
 else
   if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-console*.ova" -type f)" ]; then
-    yearmonth=$yearmonth packer build -force -var-file=arch-bootstrap-ng-vars.json -only=bootstrap archlinux.json
+    yearmonthday=$yearmonthday packer build -force -var-file=arch-bootstrap-ng-vars.json -only=bootstrap archlinux.json
   fi
 fi
 
 if [[ -z ${bootonly} ]]; then
   if [[ ${graphicalenv} =~ "YES" ]]; then
     if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-desktop*.ova" -type f)" ]; then
-      yearmonth=$yearmonth packer build -force -var-file=arch-userbase-vars.json -only=customize archlinux.json
+      yearmonthday=$yearmonthday packer build -force -var-file=arch-userbase-vars.json -only=customize archlinux.json
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
-      yearmonth=$yearmonth packer build -force -var-file=arch-pxe-userbase-vars.json -only=pxeboot archlinux.json
+      yearmonthday=$yearmonthday packer build -force -var-file=arch-pxe-userbase-vars.json -only=pxeboot archlinux.json
     fi
   else
     if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-console*.ova" -type f)" ]; then
-      yearmonth=$yearmonth packer build -force -var-file=arch-userbase-ng-vars.json -only=customize archlinux.json
+      yearmonthday=$yearmonthday packer build -force -var-file=arch-userbase-ng-vars.json -only=customize archlinux.json
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
-      yearmonth=$yearmonth packer build -force -var-file=arch-pxe-userbase-ng-vars.json -only=pxeboot archlinux.json
+      yearmonthday=$yearmonthday packer build -force -var-file=arch-pxe-userbase-ng-vars.json -only=pxeboot archlinux.json
     fi
   fi
 fi
