@@ -44,7 +44,7 @@ for elem in $GPUS; do
     VIRTUAL_ENV=1
     tee -a "/mnt/etc/skel/.bash_profile" <<EOF
 if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
-  startx
+  exec startx
 fi
 EOF
     break
@@ -53,7 +53,7 @@ done
 if [ $VIRTUAL_ENV -eq 0 ]; then
   tee -a "/mnt/etc/skel/.bash_profile" <<EOF
 #if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.xinitrc ]] && [[ -f /usr/bin/startx ]]; then
-#  startx
+#  exec startx
 #fi
 if [[ \$(tty) = /dev/tty1 ]] && [[ -f ~/.config/sway/config ]] && [[ -f /usr/bin/sway ]]; then
   exec sway
@@ -342,7 +342,9 @@ xrandrout=\$(xrandr)
 #    xrandr --output "\$intern" --primary --mode ... --pos 0x0 --rotate normal --output "\$extern" --off
 #fi
 
-nitrogen --set-zoom-fill "\$(find /usr/share/backgrounds -type f \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \\) | shuf -n 1)" --head=-1
+nitrogen --set-zoom-fill "$(find /usr/share/backgrounds -type f \
+    \( -not -wholename '*/sway/*' \) \
+    \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) | shuf -n 1)" --head=-1
 EOF
 chmod +x "/mnt/etc/skel/.screenlayout/default.sh"
 
