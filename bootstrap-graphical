@@ -12,8 +12,9 @@ mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock \
   freerdp notepadqq gitg firefox keepassxc llpp pdfpc \
   pcmanfm ca-certificates ca-certificates-mozilla ca-certificates-utils \
   wine-staging winetricks \
-  p7zip-gui ttf-ms-fonts otf-openmoji noto-fonts-emoji \
+  p7zip-gui ttf-ms-fonts noto-fonts-emoji \
   alacritty sysinfo
+#mnt_pacman_need otf-openmoji
 # corner coasting still not supported in libinput
 # https://gitlab.freedesktop.org/libinput/libinput/-/issues/536
 tee /mnt/usr/share/X11/xorg.conf.d/30-touchpad.conf <<EOF
@@ -62,7 +63,7 @@ pref("font.name.sans-serif.x-western", "Liberation Sans");
 pref("font.name.monospace.x-western", "Liberation Mono");
 pref("font.minimum-size.x-western", 9);
 lockPref("font.default.x-western", "Liberation Serif");
-lockPref("font.name-list.emoji", "OpenMoji");
+lockPref("font.name-list.emoji", "Noto Color Emoji");
 // the user should not be able to display all passwords
 lockPref("pref.privacy.disable_button.view_passwords", true);
 lockPref("pref.privacy.disable_button.view_passwords_exceptions", true);
@@ -115,37 +116,37 @@ tee /mnt/etc/fonts/conf.d/69-emoji.conf <<EOF
   <alias binding="weak">
     <family>sans-serif</family>
     <prefer>
-      <family>OpenMoji</family>
+      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>serif</family>
     <prefer>
-      <family>OpenMoji</family>
+      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>monospace</family>
     <prefer>
-      <family>OpenMoji</family>
+      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>DejaVu Sans</family>
     <prefer>
-      <family>OpenMoji</family>
+      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>DejaVu Serif</family>
     <prefer>
-      <family>OpenMoji</family>
+      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
   <alias binding="weak">
     <family>DejaVu Sans Mono</family>
     <prefer>
-      <family>OpenMoji</family>
+      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
   <match target="scan">
@@ -186,24 +187,24 @@ tee /mnt/etc/fonts/conf.d/70-no-mozilla-emoji.conf <<EOF
   </selectfont>
 </fontconfig>
 EOF
-tee /mnt/etc/fonts/conf.d/70-no-openmoji-black.conf <<EOF
-<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-<fontconfig>
-  <selectfont>
-    <rejectfont>
-      <pattern>
-        <patelt name="family">
-          <string>OpenMoji</string>
-        </patelt>
-        <patelt name="style">
-          <string>Black</string>
-        </patelt>
-      </pattern>
-    </rejectfont>
-  </selectfont>
-</fontconfig>
-EOF
+#tee /mnt/etc/fonts/conf.d/70-no-openmoji-black.conf <<EOF
+#<?xml version="1.0"?>
+#<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+#<fontconfig>
+#  <selectfont>
+#    <rejectfont>
+#      <pattern>
+#        <patelt name="family">
+#          <string>OpenMoji</string>
+#        </patelt>
+#        <patelt name="style">
+#          <string>Black</string>
+#        </patelt>
+#      </pattern>
+#    </rejectfont>
+#  </selectfont>
+#</fontconfig>
+#EOF
 tee /mnt/etc/fonts/conf.d/70-no-fa-regular.conf <<EOF
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
