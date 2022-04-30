@@ -226,7 +226,17 @@ done
 for choice in $OPTCHOICE; do
   case $choice in
     cyber)
-      pacman_need cyberchef-electron
+      pacman_need cyberchef-web
+      sudo mkdir -p "/mnt/etc/skel/.local/share/applications"
+      sudo tee "/mnt/etc/skel/.local/share/applications/CyberChef.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=CyberChef
+Exec=firefox -new-window /usr/share/webapps/cyberchef/index.html
+Terminal=false
+EOF
+      mkdir -p "$HOME/.local/share/applications"
+      cp /mnt/etc/skel/.local/share/applications/CyberChef.desktop "$HOME/.local/share/applications/"
     ;;
   esac
 done
