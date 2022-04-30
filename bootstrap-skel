@@ -342,9 +342,9 @@ xrandrout=\$(xrandr)
 #    xrandr --output "\$intern" --primary --mode ... --pos 0x0 --rotate normal --output "\$extern" --off
 #fi
 
-nitrogen --set-zoom-fill "$(find /usr/share/backgrounds -type f \
-    \( -not -wholename '*/sway/*' \) \
-    \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) | shuf -n 1)" --head=-1
+nitrogen --set-zoom-fill "\$(find /usr/share/backgrounds -type f \\
+    \\( -not -wholename '*/sway/*' \\) \\
+    \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \\) | shuf -n 1)" --head=-1
 EOF
 chmod +x "/mnt/etc/skel/.screenlayout/default.sh"
 
