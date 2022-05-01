@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
   case $key in
     -a|--auto)
       AUTO="YES"
-      OPTCHOICE="$2"
+      OPTCHOICE="$(echo $2 | tr ',' '\n')"
       shift
       shift
       ;;
