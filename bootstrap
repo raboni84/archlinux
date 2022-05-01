@@ -183,6 +183,7 @@ fi
 EOF
 chmod +x "/mnt/usr/bin/mirror_update"
 mnt_cmd mirror_update
+mnt_cmd pacman-key --populate archlinux
 mnt_pacman_update
 
 # install base-devel without sudo
