@@ -13,6 +13,7 @@ mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock \
   pcmanfm ca-certificates ca-certificates-mozilla ca-certificates-utils \
   wine-staging winetricks \
   p7zip-gui ttf-ms-fonts noto-fonts-emoji \
+  xdg-desktop-portal xdg-desktop-portal-wlr \
   alacritty sysinfo
 #mnt_pacman_need otf-openmoji
 # corner coasting still not supported in libinput
