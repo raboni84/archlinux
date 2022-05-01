@@ -49,25 +49,25 @@ done < sha1sums.txt
 mkdir -p output pxe
 
 if [[ ${graphicalenv} =~ "YES" ]]; then
-  if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-desktop*.ova" -type f)" ]; then
+  if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-desktop*.ovf" -type f)" ]; then
     yearmonthday=$yearmonthday packer build -force -var-file=arch-bootstrap-vars.json -only=bootstrap archlinux.json
   fi
 else
-  if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-console*.ova" -type f)" ]; then
+  if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-console*.ovf" -type f)" ]; then
     yearmonthday=$yearmonthday packer build -force -var-file=arch-bootstrap-ng-vars.json -only=bootstrap archlinux.json
   fi
 fi
 
 if [[ -z ${bootonly} ]]; then
   if [[ ${graphicalenv} =~ "YES" ]]; then
-    if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-desktop*.ova" -type f)" ]; then
+    if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-desktop*.ovf" -type f)" ]; then
       yearmonthday=$yearmonthday packer build -force -var-file=arch-userbase-vars.json -only=customize archlinux.json
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
       yearmonthday=$yearmonthday packer build -force -var-file=arch-pxe-userbase-vars.json -only=pxeboot archlinux.json
     fi
   else
-    if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-console*.ova" -type f)" ]; then
+    if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*userbase-console*.ovf" -type f)" ]; then
       yearmonthday=$yearmonthday packer build -force -var-file=arch-userbase-ng-vars.json -only=customize archlinux.json
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
