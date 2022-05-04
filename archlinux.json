@@ -84,8 +84,9 @@
             "format": "ovf",
             "source_path": "{{user `ovf_source`}}",
             "guest_additions_mode": "disable",
-            "boot_wait": "1m",
+            "boot_wait": "30s",
             "boot_command": [
+                "atad<enter><wait10><wait10><wait10>",
                 "root<enter><wait2>toor<enter><wait5>",
                 "loadkezs us<enter><wait1>",
                 "sed -i 's/:wheel/nopass :wheel/' /etc/doas.conf<enter><wait2>",
