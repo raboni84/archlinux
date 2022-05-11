@@ -1597,3 +1597,59 @@ tee "/mnt/etc/skel/.config/fontconfig/fonts.conf" <<EOF
 
 </fontconfig>
 EOF
+
+mkdir -p "/mnt/etc/skel/.config"
+tee "/mnt/etc/skel/.config/llpp.conf" <<EOF
+<llppconfig>
+    <defaults selection-command='LC_CTYPE=UTF-8 xclip -i -selection clipboard' paste-command='LC_CTYPE=UTF-8 xclip -o -selection clipboard' path-launcher='gtklp -o media=a4 -o fit-to-page &quot;%s&quot;' uri-launcher='xdg-open &quot;%s&quot;' savepath-command='echo %s'>
+        <keymap mode='global'>
+            <map in='ctrl-j' out='down'/>
+            <map in='ctrl-c' out='ctrl-ins'/>
+            <map in='ctrl-e' out='pgup'/>
+            <map in='ctrl-k' out='up'/>
+            <map in='ctrl-v' out='shift-ins'/>
+            <map in='ctrl-f' out='pgdown'/>
+            <map in='ctrl-d' out='pgdown'/>
+            <map in='ctrl-b' out='pgup'/>
+        </keymap>
+        <keymap mode='outline'>
+            <map in='tab' out='esc'/>
+            <map in='ctrl-e' out='pgup'/>
+            <map in='ctrl-d' out='pgdown'/>
+        </keymap>
+        <keymap mode='birdseye'>
+            <map in='k' out='up'/>
+            <map in='ctrl-u' out='ctrl-k'/>
+            <map in='u' out='ctrl-k'/>
+            <map in='l' out='right'/>
+            <map in='j' out='down'/>
+            <map in='f' out='pgdown'/>
+            <map in='d' out='ctrl-j'/>
+            <map in='f11' out='f'/>
+            <map in='ctrl-d' out='ctrl-j'/>
+            <map in='b' out='pgup'/>
+            <map in='h' out='left'/>
+        </keymap>
+        <keymap mode='view'>
+            <map in='tab' out='o'/>
+            <map in='k' out='up'/>
+            <map in='ctrl-u' out='ctrl-k'/>
+            <map in='=' out='ctrl-='/>
+            <map in='esc' out=''/>
+            <map in='u' out='ctrl-k'/>
+            <map in='l' out='right'/>
+            <map in='j' out='down'/>
+            <map in='w' out='ctrl-w'/>
+            <map in='f' out='pgdown'/>
+            <map in='e' out='ctrl-up'/>
+            <map in='d' out='ctrl-down'/>
+            <map in='f11' out='f'/>
+            <map in='-' out='ctrl--'/>
+            <map in='ctrl-d' out='ctrl-j'/>
+            <map in='b' out='pgup'/>
+            <map in='x' out='q'/>
+            <map in='h' out='left'/>
+        </keymap>
+    </defaults>
+</llppconfig>
+EOF
