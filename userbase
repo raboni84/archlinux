@@ -1,9 +1,5 @@
 #!/bin/bash
 # WARNING: this script will destroy all data on the selected disk.
-# It can be started by executing the following commands:
-#   curl -sL https://raw.githubusercontent.com/raboni84/arch/master/userbase > userbase
-#   chmod +x userbase
-#   ./userbase
 
 set -uo pipefail
 set +o history

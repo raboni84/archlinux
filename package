@@ -1,4 +1,5 @@
 #!/bin/bash
+# WARNING: this script will destroy all data on the selected disk.
 
 set -uo pipefail
 set +o history

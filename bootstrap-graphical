@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# WARNING: this script will destroy all data on the selected disk.
 #
 # graphical environment installed in bootstrap
 #
