@@ -1,8 +1,4 @@
 #!/bin/bash
-# It can be started by executing the following commands:
-#   curl -sL https://raw.githubusercontent.com/raboni84/arch/master/package > package
-#   chmod +x package
-#   ./package
 
 set -uo pipefail
 set +o history
