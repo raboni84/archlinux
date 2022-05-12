@@ -11,7 +11,7 @@ mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock \
   libreoffice-fresh nomacs krita smplayer evolution gnome-keyring \
   freerdp notepadqq gitg firefox keepassxc llpp pdfpc \
   pcmanfm ca-certificates ca-certificates-mozilla ca-certificates-utils \
-  wine-staging winetricks \
+  wine winetricks \
   p7zip-gui ttf-ms-fonts noto-fonts-emoji \
   xdg-desktop-portal xdg-desktop-portal-wlr \
   alacritty sysinfo
