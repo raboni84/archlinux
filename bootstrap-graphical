@@ -4,7 +4,7 @@
 # graphical environment installed in bootstrap
 #
 
-mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock \
+mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock xclip xsel \
   i3-wm nitrogen brightnessctl gammastep arandr dunst libnotify xarchiver \
   libinput xf86-input-libinput xorg-xinput \
   archlinux-wallpaper elementary-wallpapers papirus-icon-theme flameshot \
