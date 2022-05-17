@@ -295,6 +295,12 @@ dbus-update-activation-environment DISPLAY
 exec i3
 EOF
 chmod 0600 "/mnt/etc/skel/.xinitrc"
+for elem in $GPUS; do
+  if [[ $elem =~ [Ii][Nn][Nn][Oo][Tt][Ee][Kk] || $elem =~ [Vv][Mm][Ww][Aa][Rr][Ee] ]]; then
+    sed -i 's/^exec i3/VBoxClient-all \&\nexec i3/g' /mnt/etc/skel/.xinitrc
+    break
+  fi
+done
 
 tee "/mnt/etc/skel/.nanorc" <<EOF
 include /usr/share/nano/*.nanorc
