@@ -12,10 +12,10 @@ mnt_pacman_need xorg-server xorg-xinit xorg-xrandr xautolock slock xclip xsel \
   libreoffice-fresh nomacs krita smplayer evolution gnome-keyring \
   freerdp notepadqq gitg firefox keepassxc llpp pdfpc \
   pcmanfm ca-certificates ca-certificates-mozilla ca-certificates-utils \
-  wine winetricks \
   p7zip-gui ttf-ms-fonts noto-fonts-emoji \
   xdg-desktop-portal xdg-desktop-portal-wlr \
   alacritty sysinfo
+mnt_pacman_need wine winetricks
 #mnt_pacman_need otf-openmoji
 # corner coasting still not supported in libinput
 # https://gitlab.freedesktop.org/libinput/libinput/-/issues/536
