@@ -19,6 +19,9 @@ mnt_pacman_need wine winetricks
 #mnt_pacman_need otf-openmoji
 # corner coasting still not supported in libinput
 # https://gitlab.freedesktop.org/libinput/libinput/-/issues/536
+if [ ! -d /mnt/usr/share/X11/xorg.conf.d ]; then
+  mkdir -p /mnt/usr/share/X11/xorg.conf.d
+fi
 tee /mnt/usr/share/X11/xorg.conf.d/30-touchpad.conf <<EOF
 Section "InputClass"
     Identifier "touchpad"
