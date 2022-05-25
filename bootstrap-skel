@@ -174,7 +174,7 @@ function fasthash() {
       if [ -d "\$1" ]; then
         # is directory
         echo -e "\$(find "\$1" -type f -xtype f -print0 \\
-          | xargs -0 -I {} pv {} | sort -z | gzip -c \\
+          | sort -z | xargs -0 -I {} pv {} | gzip -c \\
           | tail -c8 | od -t x4 -N 4 -A n \\
           | xargs)\\t\$(realpath "\$1")/*"
       elif [ -f "\$1" ]; then
@@ -196,7 +196,7 @@ function fasthash() {
       | gzip -c | tail -c8 | od -t x4 -N 4 -A n \\
       | xargs)\\t-"
   else
-    echo "no data"
+    echo "no data" 1>&2
   fi
 }
 export -f fasthash
