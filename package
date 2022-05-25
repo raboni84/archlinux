@@ -1,5 +1,5 @@
 #!/bin/bash
-# WARNING: this script will destroy all data on the selected disk.
+# Create pxe bootable setup from existing image
 
 set -uo pipefail
 set +o history

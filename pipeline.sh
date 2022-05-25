@@ -46,8 +46,6 @@ while read line; do
     fi
 done < sha1sums.txt
 
-mkdir -p output pxe
-
 if [[ ${graphicalenv} =~ "YES" ]]; then
   if [[ ${forcebuild} =~ "YES" ]] || [ -z "$(find output -name "*bootstrap-desktop*.ovf" -type f)" ]; then
     yearmonthday=$yearmonthday packer build -force -var-file=arch-bootstrap-vars.json -only=bootstrap archlinux.json
