@@ -1,0 +1,115 @@
+#!/bin/bash
+# Rescue script to perform the steps needed to mount everything in place from the iso environment
+
+set -uo pipefail
+set +o history
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND. Good Luck!!"; exit $s' ERR
+
+### Set up logging ###
+exec 1> >(tee "/tmp/stdout.log")
+exec 2> >(tee "/tmp/stderr.log")
+
+mnt_cmd() {
+  arch-chroot /mnt $@
+}
+
+# initialize root
+USER="$(id -un)"
+if [ ! "$EUID" -eq 0 ]; then
+  echo >&2 "Please run the script as root"
+  exit 1
+else
+  echo "Running as current user '$USER'"
+fi
+
+AUTO=""
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    -a|--auto)
+      AUTO="YES"
+      device="$2"
+      data_password="$3"
+      shift
+      shift
+      shift
+      echo "using device=$device, data_password=$data_password"
+      ;;
+    *)
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+### update system ###
+# get rid of reflector
+systemctl kill reflector || true
+systemctl stop reflector || true
+systemctl disable reflector
+# get arch mirrorlist
+curl -s 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_status=on' | \
+  sed -e 's/#Server/Server/g' | \
+  tee /etc/pacman.d/mirrorlist
+# resize tmpfs
+mount -o remount,size=80% /run/archiso/cowspace
+systemctl start vboxservice
+
+### set regionals for iso environment ###
+sed -i 's/^#\?de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen
+echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+rm /etc/localtime || true
+ln -s /usr/share/zoneinfo/CET /etc/localtime
+hwclock --systohc --utc
+loadkeys de-latin1-nodeadkeys
+echo "KEYMAP=de-latin1-nodeadkeys" > /etc/vconsole.conf
+
+readarray -t devicelist < <(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  echo "Select system drive:"
+  select opt in "${devicelist[@]}"
+  do
+    if [ ! -z "$opt" ]; then
+      device=$(echo "$opt" | cut -d' ' -f1)
+      break
+    fi
+  done
+fi
+
+part_efi="$(ls ${device}* | grep -E "^${device}p?1$")"
+part_boot="$(ls ${device}* | grep -E "^${device}p?2$")"
+part_root="$(ls ${device}* | grep -E "^${device}p?3$")"
+part_data="$(ls ${device}* | grep -E "^${device}p?4$")"
+data_id="data"
+volgrp_id="volgrp"
+
+if [[ ! ${AUTO} =~ "YES" ]]; then
+  echo -en "Enter password for encrypted ${data_id} partition\n\
+  (leave empty for no encryption): "
+  read data_password
+  tput cuu1; tput el
+  echo -e "  (leave empty for no encryption): "
+fi
+if [[ ! -z "$data_password" ]]; then
+  echo -n "${data_password}" | (cryptsetup -q open ${part_data} ${data_id} -d -)
+fi
+
+if [[ ! -d /mnt/data ]]; then
+  mkdir /tmp/overlays
+  mount -t tmpfs tmpfs -o size=80% /tmp/overlays
+  mkdir -p /tmp/overlays/{root,data}/{lower,work,upper}
+  mount ${part_root} -o ro /tmp/overlays/root/lower
+  mount /dev/${volgrp_id}/${data_id} -o ro /tmp/overlays/data/lower
+  
+  mount -t overlay overlay -o lowerdir=/tmp/overlays/root/lower,upperdir=/tmp/overlays/root/upper,workdir=/tmp/overlays/root/work /mnt
+  mount -t overlay overlay -o lowerdir=/tmp/overlays/data/lower,upperdir=/tmp/overlays/data/upper,workdir=/tmp/overlays/data/work /mnt/data
+  mount -o rw,bind /mnt/data/home /mnt/home
+  mount -o rw,bind /mnt/data/var /mnt/var
+  mount -o rw,bind /mnt/data/root /mnt/root
+  mount -o rw,bind /mnt/data/srv /mnt/srv
+fi
+
+echo -en "Good Luck!!\n\n"
