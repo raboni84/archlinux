@@ -167,6 +167,40 @@ function anyupdates() {
 }
 export -f anyupdates
 
+function fasthash() {
+  if test -n "\$1"; then
+    # parameter(s) given
+    while (( "\$#" )); do
+      if [ -d "\$1" ]; then
+        # is directory
+        echo -e "\$(find "\$1" -type f -xtype f -print0 \\
+          | xargs -0 -I {} pv {} | sort -z | gzip -c \\
+          | tail -c8 | od -t x4 -N 4 -A n \\
+          | xargs)\\t\$(realpath "\$1")/*"
+      elif [ -f "\$1" ]; then
+        # is file
+        echo -e "\$(pv "\$1" \\
+          | gzip -c | tail -c8 | od -t x4 -N 4 -A n \\
+          | xargs)\\t\$(realpath "\$1")"
+      else
+        # is string
+        echo -e "\$(echo -en "\$1" \\
+          | gzip -c | tail -c8 | od -t x4 -N 4 -A n \\
+          | xargs)\\t\\"\$(printf "%q" "\$1")\\""
+      fi
+      shift
+    done
+  elif test ! -t 0; then
+    # read from stdin
+    echo -e "\$(cat - | pv \\
+      | gzip -c | tail -c8 | od -t x4 -N 4 -A n \\
+      | xargs)\\t-"
+  else
+    echo "no data"
+  fi
+}
+export -f fasthash
+
 # configure completion for doas
 complete -cf doas
 
