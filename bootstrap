@@ -171,7 +171,7 @@ if [ ! -f /mnt/etc/pacman.d/aurlist ]; then
     | tee /mnt/etc/pacman.d/aurlist
 fi
 echo -en '\n[aur]\nSigLevel = Optional DatabaseOptional\nInclude = /etc/pacman.d/aurlist\n\n' \
-  | tee -a /etc/pacman.conf
+  | tee -a /mnt/etc/pacman.conf
 sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /mnt/etc/pacman.conf
 tee "/mnt/usr/bin/mirror_update" <<EOF
 #!/usr/bin/env bash
