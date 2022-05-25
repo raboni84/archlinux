@@ -168,10 +168,10 @@ if [ -f /etc/pacman.d/aurlist ]; then
 fi
 if [ ! -f /mnt/etc/pacman.d/aurlist ]; then
   echo -en '# custom arch user repository\nServer = https://raboni84.github.io/$repo/$arch\n' \
-    | sudo tee /mnt/etc/pacman.d/aurlist
+    | tee /mnt/etc/pacman.d/aurlist
 fi
 echo -en '\n[aur]\nSigLevel = Optional DatabaseOptional\nInclude = /etc/pacman.d/aurlist\n\n' \
-  | sudo tee -a /etc/pacman.conf
+  | tee -a /etc/pacman.conf
 sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /mnt/etc/pacman.conf
 tee "/mnt/usr/bin/mirror_update" <<EOF
 #!/usr/bin/env bash
