@@ -161,7 +161,17 @@ chmod 0400 /mnt/etc/doas.conf
 sed -i 's/^#IgnorePkg.*/IgnorePkg   = sudo/' /mnt/etc/pacman.conf
 
 # enable multilib, custom-user-repo and fix the /mnt mirrorlist
-sed -i '/^#\[multilib\]$/{N;s/^#\[multilib\]\n#Include.*/[multilib]\nInclude = \/etc\/pacman.d\/mirrorlist\/\n\n[aur]\nSigLevel = Optional DatabaseOptional\nServer = https:\/\/raboni84.github.io\/$repo\/$arch/;}' /mnt/etc/pacman.conf
+sed -i '/^#\[multilib\]$/{N;s/^#\[multilib\]\n#Include.*/[multilib]\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
+if [ -f /etc/pacman.d/aurlist ]; then
+  mkdir -p /mnt/etc/pacman.d
+  cp /etc/pacman.d/aurlist /mnt/etc/pacman.d/
+fi
+if [ ! -f /mnt/etc/pacman.d/aurlist ]; then
+  echo -en '# custom arch user repository\nServer = https://raboni84.github.io/$repo/$arch\n' \
+    | sudo tee /mnt/etc/pacman.d/aurlist
+fi
+echo -en '\n[aur]\nSigLevel = Optional DatabaseOptional\nInclude = /etc/pacman.d/aurlist\n\n' \
+  | sudo tee -a /etc/pacman.conf
 sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 5/' /mnt/etc/pacman.conf
 tee "/mnt/usr/bin/mirror_update" <<EOF
 #!/usr/bin/env bash
