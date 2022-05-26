@@ -98,18 +98,14 @@ if [[ ! -z "$data_password" ]]; then
 fi
 
 if [[ ! -d /mnt/data ]]; then
-  mkdir /tmp/overlays
-  mount -t tmpfs tmpfs -o size=80% /tmp/overlays
-  mkdir -p /tmp/overlays/{root,data}/{lower,work,upper}
-  mount ${part_root} -o ro /tmp/overlays/root/lower
-  mount /dev/${volgrp_id}/${data_id} -o ro /tmp/overlays/data/lower
+  mount ${part_root} /mnt
+  mount ${part_efi} /mnt/boot/EFI
+  mount /dev/${volgrp_id}/${data_id} /mnt/${data_id}
   
-  mount -t overlay overlay -o lowerdir=/tmp/overlays/root/lower,upperdir=/tmp/overlays/root/upper,workdir=/tmp/overlays/root/work /mnt
-  mount -t overlay overlay -o lowerdir=/tmp/overlays/data/lower,upperdir=/tmp/overlays/data/upper,workdir=/tmp/overlays/data/work /mnt/data
-  mount -o rw,bind /mnt/data/home /mnt/home
-  mount -o rw,bind /mnt/data/var /mnt/var
-  mount -o rw,bind /mnt/data/root /mnt/root
-  mount -o rw,bind /mnt/data/srv /mnt/srv
+  mount -o rw,bind /mnt/${data_id}/home /mnt/home
+  mount -o rw,bind /mnt/${data_id}/var /mnt/var
+  mount -o rw,bind /mnt/${data_id}/root /mnt/root
+  mount -o rw,bind /mnt/${data_id}/srv /mnt/srv
 fi
 
 echo -en "Good Luck!!\n\n"
