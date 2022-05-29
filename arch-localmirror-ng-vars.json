@@ -1,0 +1,14 @@
+{
+    "id": "{{timestamp}}",
+    "date": "{{env `yearmonthday`}}",
+    "headless": "true",
+    "stage": "localmirror",
+    "old_stage": "userbase",
+    "ovf_source": "output/archlinux-{{user `old_stage`}}-console-{{user `date`}}-x86_64.ovf",
+    "stage_files": "localmirror",
+    "stage_cmd": "--auto",
+    "prov_user": "user",
+    "prov_pass": "resu",
+    "ovf_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}-x86_64",
+    "vbox_name": "{{user `id`}}"
+}

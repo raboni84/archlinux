@@ -1,0 +1,114 @@
+#!/bin/bash
+# WARNING: this script will destroy all data on the selected disk.
+
+set -uo pipefail
+set +o history
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+SCRIPT=`realpath "$0"`
+SCRIPTPATH=`dirname "$SCRIPT"`
+
+### Set up logging ###
+exec 1> >(tee "/tmp/stdout.log")
+exec 2> >(tee "/tmp/stderr.log")
+
+pacman_need() {
+  sudo pacman -S --needed --noconfirm --color=auto $@
+}
+
+# initialize user
+USER="$(id -un)"
+if [ "$EUID" -eq 0 ]; then
+  echo >&2 "Please don't run the script as root"
+  exit 1
+else
+  echo "Running as current user '$USER'"
+fi
+
+tee "$HOME/mirrorsync.sh" <<EOF
+#!/usr/bin/env bash
+
+set -uo pipefail
+set +o history
+
+SYNC_HOME="\$(dirname \$(readlink -f "\$0"))/localmirror"
+SYNC_LOGS="\$SYNC_HOME/logs"
+SYNC_FILES="\$SYNC_HOME/files"
+SYNC_REPO=(core extra community multilib)
+SERVER_ARR="\$(curl -S 'https://archlinux.org/mirrors/status/json/' | jq -r '[.urls[] | select(.protocol == "rsync" and .completion_pct == 1 and .country_code == "DE" and .active)]')"
+SERVER_ARR_LEN="\$(echo -en \$SERVER_ARR | jq '. | length')"
+SERVER_SEL="\$(shuf -i1-\$SERVER_ARR_LEN -n1)"
+SYNC_SERVER="\$(echo -en \$SERVER_ARR | jq -r ".[\$SERVER_SEL].url")"
+LOG_FILE="mirrorsync_out_\$(date +%Y%m%d-%H).log"
+
+if [ ! -d "\$SYNC_LOGS" ]; then
+    mkdir -p "\$SYNC_LOGS"
+fi
+if [ ! -d "\$SYNC_FILES" ]; then
+    mkdir -p "\$SYNC_FILES"
+fi
+
+for repo in \${SYNC_REPO[@]}; do
+    repo=\$(echo "\$repo" | tr [:upper:] [:lower:])
+    echo ">> Syncing \$repo to \$SYNC_FILES/\$repo" | tee -a "\$SYNC_LOGS/\$LOG_FILE"
+    rsync -rptlv --inplace --delete --safe-links --copy-links "\$SYNC_SERVER/\$repo" \\
+        "\$SYNC_FILES/" 2>&1 | tee -a "\$SYNC_LOGS/\$LOG_FILE"
+    echo ">> Syncing \$repo done." | tee -a "\$SYNC_LOGS/\$LOG_FILE"
+    sleep 5
+done
+EOF
+chmod +x "$HOME/mirrorsync.sh"
+mkdir -p /home/${USER}/localmirror/{files,logs}
+
+sudo tee "/etc/systemd/system/mirrorsync@.timer" <<EOF
+[Unit]
+Description=Run mirrorsync daily and on boot
+
+[Timer]
+OnBootSec=15min
+OnCalendar=*-*-* 00:57:00
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo tee "/etc/systemd/system/mirrorsync@.service" <<EOF
+[Unit]
+Description=Local mirror sync
+StartLimitIntervalSec=30s
+StartLimitBurst=5
+After=network.target
+
+[Service]
+Restart=on-failure
+RestartSec=2s
+User=%I
+WorkingDirectory=/home/%I
+ExecStart=/home/%I/mirrorsync.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable mirrorsync@${USER}.timer
+
+pacman_need darkhttpd
+
+sudo tee "/etc/systemd/system/darkhttpd@.service" <<EOF
+[Unit]
+Description=Run webserver for local mirror
+StartLimitIntervalSec=30s
+StartLimitBurst=5
+After=network.target
+
+[Service]
+Restart=on-failure
+RestartSec=2s
+User=%I
+WorkingDirectory=/home/%I/localmirror/files
+ExecStart=/usr/bin/darkhttpd /home/%I/localmirror/files --no-listing --mimetypes /etc/conf.d/mimetypes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable darkhttpd@${USER}.service

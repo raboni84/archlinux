@@ -9,6 +9,7 @@ bootonly=""
 withpxe=""
 forcebuild=""
 graphicalenv="YES"
+localmirror=""
 POSITIONAL=()
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -26,6 +27,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -ng|--no-graphical-env)
+      graphicalenv=""
+      shift
+      ;;
+    -l|--localmirror)
+      localmirror="YES"
       graphicalenv=""
       shift
       ;;
@@ -70,6 +76,9 @@ if [[ -z ${bootonly} ]]; then
     fi
     if [[ ${withpxe} =~ "YES" ]]; then
       yearmonthday=$yearmonthday packer build -force -var-file=arch-pxe-userbase-ng-vars.json -only=pxeboot archlinux.json
+    fi
+    if [[ ${localmirror} =~ "YES" ]]; then
+      yearmonthday=$yearmonthday packer build -force -var-file=arch-localmirror-ng-vars.json -only=customize archlinux.json
     fi
   fi
 fi
