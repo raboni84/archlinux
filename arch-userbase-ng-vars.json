@@ -5,6 +5,7 @@
     "stage": "userbase",
     "old_stage": "bootstrap",
     "ovf_source": "output/archlinux-{{user `old_stage`}}-console-{{user `date`}}-x86_64.ovf",
+    "opt_encrypt_pwd": "",
     "stage_files": "userbase",
     "stage_cmd": "--auto \"\" --no-graphical-env",
     "prov_user": "user",

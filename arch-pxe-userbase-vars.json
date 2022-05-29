@@ -6,6 +6,7 @@
     "stage": "package",
     "old_stage": "userbase",
     "ovf_source": "output/archlinux-{{user `old_stage`}}-desktop-{{user `date`}}-x86_64.ovf",
+    "opt_encrypt_pwd": "",
     "stage_files": "package",
     "stage_cmd": "--auto /dev/sda \"atad\"",
     "prov_user": "root",
