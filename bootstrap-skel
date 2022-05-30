@@ -217,6 +217,7 @@ alias rmdir='rmtrash -r'
 alias sudo='sudo '
 alias newpasswd='xkcd-pass -d " " -w /usr/share/dict/ngerman -n 4 -c 8 --no-padding-digits'
 alias cifs-copy='rsync -rtvus --size-only --stats --no-links --progress'
+alias du='ncdu'
 if [[ \$(id -u) -eq 0 ]]; then
   PS1='\\[\\e[;31m\\][\\u@\\h \\W]\\\$\\[\\e[m\\] '
 else
