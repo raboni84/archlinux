@@ -62,6 +62,10 @@ fi
 sudo ufw logging off
 sudo ufw enable
 
+# install dotnet 5.0
+aur dotnet-core-5.0-bin
+/usr/bin/rm -rf $HOME/.local/build/dotnet-core-5.0-bin.aur
+
 # powershell in userspace
 dotnet tool install --global PowerShell || \
   dotnet tool update --global PowerShell || \
