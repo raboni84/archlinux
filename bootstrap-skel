@@ -604,7 +604,7 @@ desktop)
   # 3. We see a Path= line during search: set variable
   # 4. Finally, build command line
   command=\$(awk -v pattern="\${PATTERN}" -F= '
-                BEGIN{a=0;exec=0; path=0}
+                BEGIN{a=0;exec=0; path=0; term=0}
                    /^\\[Desktop/{
                     if(a){
                       a=0
@@ -625,22 +625,33 @@ desktop)
                       path=\$2
                     }
                    }
+                  /^Terminal=true/{
+                    if(a && !term){
+                      term=1
+                    }
+                   }
 
                 END{
+                  if(term){
+                    printf "%s","alacritty --class \\"Alacritty\\" -e bash -c \\""
+                  }
                   if(path){
                     printf "%s","cd " path " && "
                   }
                   printf "%s",exec
+                  if(term){
+                    printf "%s","\\""
+                  }
                 }' "\${PARAMS[0]}")
+  setsid -f \$command
   ;;
 command)
   command="\${PARAMS[0]}"
+  setsid -f alacritty --class "Alacritty" -e bash -c "\$command"
   ;;
 esac
 
 echo "\$command"
-#i3-msg -t command exec "\$command"
-swaymsg -t command exec "\$command"
 EOF
 chmod +x "/mnt/etc/skel/.local/bin/launcher-desktop"
 
