@@ -201,12 +201,12 @@ echo -en "n\n\ny\n" | (mnt_cmd pacman -S base-devel --needed --ignore sudo)
 # libxft-bgra needs to be first because of weird dependency problems with fonts
 mnt_pacman_need linux linux-headers linux-firmware nano sudo-dummy \
   htop grub efibootmgr dosfstools mtools dialog git ufw \
-  bash-completion openssh lvm2 pv lshw libxml2 jq \
-  dotnet-host dotnet-sdk dotnet-runtime aspnet-runtime \
-  unzip python python-pip words vim-dummy libxft-bgra \
+  bash-completion openssh lvm2 pv lshw libxml2 jq libxft-bgra
+mnt_pacman_need dotnet-host dotnet-sdk dotnet-runtime aspnet-runtime
+mnt_pacman_need unzip python python-pip words vim-dummy \
   wireguard-tools wget nfs-utils ncdu viu core/man man-pages-de trash-cli rmtrash \
-  gvfs gvfs-smb sshfs cifs-utils p7zip rsync \
-  arch-wiki-docs arch-wiki-lite \
+  gvfs gvfs-smb sshfs cifs-utils p7zip rsync
+mnt_pacman_need arch-wiki-docs arch-wiki-lite \
   pipewire pipewire-pulse pamixer pavucontrol playerctl \
   net-tools fzf xdg-user-dirs xdg-utils aur/pipefilter
 mnt_pacman_need downgrade
