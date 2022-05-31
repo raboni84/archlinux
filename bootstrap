@@ -209,6 +209,7 @@ mnt_pacman_need linux linux-headers linux-firmware nano sudo-dummy \
   arch-wiki-docs arch-wiki-lite \
   pipewire pipewire-pulse pamixer pavucontrol playerctl \
   net-tools fzf xdg-user-dirs xdg-utils aur/pipefilter
+mnt_pacman_need downgrade
 mnt_cmd systemctl enable systemd-networkd systemd-resolved \
   systemd-timesyncd sshd ufw fstrim.timer
 
@@ -337,9 +338,6 @@ TimeoutSec=0
 [Install]
 WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
 EOF
-
-# install some aur packages
-mnt_pacman_need aic94xx-firmware wd719x-firmware downgrade
 
 # disable system beep
 rmmod pcspkr || true
