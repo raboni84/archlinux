@@ -28,9 +28,6 @@ fi
 tee "$HOME/mirrorsync.sh" <<EOF
 #!/usr/bin/env bash
 
-set -uo pipefail
-set +o history
-
 SYNC_HOME="\$(dirname \$(readlink -f "\$0"))/localmirror"
 SYNC_LOGS="\$SYNC_HOME/logs"
 SYNC_FILES="\$SYNC_HOME/files"
