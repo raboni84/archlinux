@@ -1,0 +1,80 @@
+#!/bin/bash
+# WARNING: this script will destroy all data on the selected disk.
+
+set -uo pipefail
+set +o history
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+SCRIPT=`realpath "$0"`
+SCRIPTPATH=`dirname "$SCRIPT"`
+
+### Set up logging ###
+exec 1> >(tee "/tmp/stdout.log")
+exec 2> >(tee "/tmp/stderr.log")
+
+pacman_need() {
+  sudo pacman -S --needed --noconfirm --color=auto $@
+}
+
+# initialize user
+USER="$(id -un)"
+if [ "$EUID" -eq 0 ]; then
+  echo >&2 "Please don't run the script as root"
+  exit 1
+else
+  echo "Running as current user '$USER'"
+fi
+
+pacman_need syslinux dnsmasq nfs-utils
+
+sudo tee "/etc/systemd/network/20-wired.network" <<EOF
+[Match]
+Name=en*
+
+[Network]
+Address=192.168.123.1/24
+EOF
+
+if [ ! -d /srv/tftp ]; then
+  sudo mkdir /srv/tftp
+fi
+sudo cp -a /usr/lib/syslinux/bios/*.c32 /srv/tftp/
+sudo cp -a /usr/lib/syslinux/bios/pxelinux.0 /srv/tftp/
+sudo cp -a /usr/lib/syslinux/bios/memdisk /srv/tftp/
+sudo mkdir /srv/tftp/pxelinux.cfg
+sudo tee /srv/tftp/pxelinux.cfg/default <<EOF
+DEFAULT arch
+LABEL arch
+LINUX arch/x86_64/vmlinuz-linux
+INITRD arch/intel-ucode.img,arch/amd-ucode.img,arch/x86_64/initramfs-linux.img
+APPEND archiso_nfs_srv=\${pxeserver}:/srv/nfs archisobasedir=arch copytoram=n
+IPAPPEND 3
+EOF
+sudo mkdir -p /srv/tftp/arch/x86_64
+
+sudo tee /etc/dnsmasq.conf <<EOF
+port=0
+enable-tftp
+tftp-root=/srv/tftp
+log-dhcp
+dhcp-range=192.168.123.50,192.168.123.150,255.255.255.0
+dhcp-boot=pxelinux.0
+dhcp-option-force=209,pxelinux.cfg/default
+dhcp-option-force=210,
+EOF
+
+if [ ! -d /srv/nfs ]; then
+  sudo mkdir /srv/nfs
+fi
+sudo mkdir -p /srv/nfs/arch/x86_64
+
+sudo tee /etc/exports <<EOF
+/srv/nfs    192.168.123.0/255.255.255.0(root_squash,insecure,ro)
+EOF
+
+sudo chown -R dnsmasq:dnsmasq /srv/tftp
+sudo chown -R root:root /srv/nfs
+sudo find /srv/tftp /srv/nfs -type d -exec chmod 755 {} \;
+sudo find /srv/tftp /srv/nfs -type f -exec chmod 644 {} \;
+
+sudo systemctl enable dnsmasq nfs-server
