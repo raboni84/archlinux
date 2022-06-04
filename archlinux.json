@@ -29,6 +29,8 @@
                 [
                     "modifyvm",
                     "{{.Name}}",
+                    "--chipset",
+                    "ich9",
                     "--cpus",
                     "3",
                     "--memory",
