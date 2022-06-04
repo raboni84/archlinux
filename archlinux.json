@@ -32,9 +32,9 @@
                     "--chipset",
                     "ich9",
                     "--cpus",
-                    "3",
+                    "{{user `cpu_build`}}",
                     "--memory",
-                    "3072",
+                    "{{user `mem_build`}}",
                     "--graphicscontroller",
                     "vmsvga",
                     "--accelerate3d",
@@ -69,6 +69,10 @@
                 [
                     "modifyvm",
                     "{{.Name}}",
+                    "--cpus",
+                    "{{user `cpu_after`}}",
+                    "--memory",
+                    "{{user `mem_after`}}",
                     "--boot1",
                     "disk",
                     "--boot2",
@@ -101,7 +105,27 @@
             "headless": "{{user `headless`}}",
             "output_directory": "output/{{user `stage`}}",
             "output_filename": "{{user `ovf_name`}}",
-            "vm_name": "{{user `vbox_name`}}"
+            "vm_name": "{{user `vbox_name`}}",
+            "vboxmanage": [
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--cpus",
+                    "{{user `cpu_build`}}",
+                    "--memory",
+                    "{{user `mem_build`}}"
+                ]
+            ],
+            "vboxmanage_post": [
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--cpus",
+                    "{{user `cpu_after`}}",
+                    "--memory",
+                    "{{user `mem_after`}}"
+                ]
+            ]
         },
         {
             "name": "pxeboot",
@@ -126,6 +150,10 @@
                 [
                     "modifyvm",
                     "{{.Name}}",
+                    "--cpus",
+                    "{{user `cpu_build`}}",
+                    "--memory",
+                    "{{user `mem_build`}}",
                     "--boot1",
                     "dvd",
                     "--boot2",

@@ -11,5 +11,7 @@
     "prov_user": "root",
     "prov_pass": "toor",
     "ovf_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}-x86_64",
-    "vbox_name": "{{user `id`}}"
+    "vbox_name": "{{user `id`}}",
+    "mem_build": "4096",
+    "cpu_build": "4"
 }

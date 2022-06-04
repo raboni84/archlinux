@@ -11,5 +11,9 @@
     "prov_user": "user",
     "prov_pass": "resu",
     "ovf_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}-x86_64",
-    "vbox_name": "{{user `id`}}"
+    "vbox_name": "{{user `id`}}",
+    "mem_build": "2048",
+    "mem_after": "256",
+    "cpu_build": "2",
+    "cpu_after": "1"
 }
