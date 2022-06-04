@@ -161,8 +161,8 @@ function anyupdates() {
   local dbpath="\$(pacman-conf DBPath)"
 
   mkdir -p "\$tmppath"
-  ln -s "\$dbpath/local" "\$tmppath" \&>/dev/null
-  fakeroot -- pacman -Syy --dbpath "\$tmppath" --color=auto --logfile /dev/null \&>/dev/null
+  ln -s "\$dbpath/local" "\$tmppath" &>/dev/null
+  fakeroot -- pacman -Syy --dbpath "\$tmppath" --color=auto --logfile /dev/null &>/dev/null
   pacman -Qu --dbpath "\$tmppath" --color=auto 2>/dev/null
 }
 export -f anyupdates
