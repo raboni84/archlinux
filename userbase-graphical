@@ -4,6 +4,9 @@
 # graphical environment configured in userbase
 #
 
+aur llpp
+/usr/bin/rm -rf "$HOME/.local/build/llpp.aur"
+
 # wine first time startup
 wine wineboot -u
 tee "$HOME/.local/bin/wine32" <<EOF

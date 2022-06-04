@@ -14,7 +14,7 @@ mnt_pacman_need archlinux-wallpaper elementary-wallpapers papirus-icon-theme \
   ttf-baekmuk ttf-ms-fonts noto-fonts-emoji
 # complementary programs
 mnt_pacman_need libreoffice-fresh nomacs krita smplayer evolution gnome-keyring \
-  freerdp notepadqq gitg firefox keepassxc llpp pdfpc pcmanfm \
+  freerdp notepadqq gitg firefox keepassxc pdfpc pcmanfm \
   p7zip-gui xdg-desktop-portal xdg-desktop-portal-wlr
 # wine
 mnt_pacman_need wine winetricks
