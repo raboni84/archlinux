@@ -122,11 +122,11 @@ if [[ -d /media/sf_pxe ]]; then
   fi
 fi
 
-# if [[ ! -f /tmp/pxe/http/arch/x86_64/airootfs.erofs ]]; then
-if [[ ! -f /tmp/pxe/http/arch/x86_64/airootfs.sfs ]]; then
-  mkdir -p /tmp/pxe/http/arch/x86_64
-  # mkfs.erofs -zlz4hc,12 --exclude-path=boot --exclude-path=data --exclude-path=lost+found --exclude-path=etc/fstab --exclude-path=etc/crypttab -- /tmp/pxe/http/arch/x86_64/airootfs.erofs /mnt
-  mksquashfs /mnt /tmp/pxe/http/arch/x86_64/airootfs.sfs -comp xz -Xbcj x86 -b 1M -Xdict-size 1M -e /mnt/boot /mnt/data /mnt/lost+found /mnt/etc/fstab /mnt/etc/crypttab
+# if [[ ! -f /tmp/pxe/nfs/arch/x86_64/airootfs.erofs ]]; then
+if [[ ! -f /tmp/pxe/nfs/arch/x86_64/airootfs.sfs ]]; then
+  mkdir -p /tmp/pxe/nfs/arch/x86_64
+  # mkfs.erofs -zlz4hc,12 --exclude-path=boot --exclude-path=data --exclude-path=lost+found --exclude-path=etc/fstab --exclude-path=etc/crypttab -- /tmp/pxe/nfs/arch/x86_64/airootfs.erofs /mnt
+  mksquashfs /mnt /tmp/pxe/nfs/arch/x86_64/airootfs.sfs -comp xz -Xbcj x86 -b 1M -Xdict-size 1M -e /mnt/boot /mnt/data /mnt/lost+found /mnt/etc/fstab /mnt/etc/crypttab
 fi
 
 mnt_cmd pacman -Syy --noconfirm --color=auto
@@ -149,12 +149,12 @@ if [[ ! -f /tmp/pxe/tftp/pxelinux.cfg/default ]]; then
   cp -a /mnt/usr/lib/syslinux/bios/*.c32 /tmp/pxe/tftp/
   cp -a /mnt/usr/lib/syslinux/bios/pxelinux.0 /tmp/pxe/tftp/
   cp -a /mnt/usr/lib/syslinux/bios/memdisk /tmp/pxe/tftp/
-  (
-    echo 'DEFAULT arch'
-    echo 'LABEL arch'
-    echo 'LINUX arch/x86_64/vmlinuz-linux'
-    echo 'INITRD arch/intel-ucode.img,arch/amd-ucode.img,arch/x86_64/initramfs-linux.img'
-    echo 'APPEND archiso_http_srv=http://${pxeserver}/ archisobasedir=arch cow_spacesize=80%'
-    echo 'IPAPPEND 3'
-  ) | tee /tmp/pxe/tftp/pxelinux.cfg/default
+  tee /tmp/pxe/tftp/pxelinux.cfg/default <<EOF
+DEFAULT arch
+LABEL arch
+LINUX arch/x86_64/vmlinuz-linux
+INITRD arch/intel-ucode.img,arch/amd-ucode.img,arch/x86_64/initramfs-linux.img
+APPEND archiso_nfs_srv=\${pxeserver}:/srv/nfs archisobasedir=arch copytoram=n cow_spacesize=80%
+IPAPPEND 3
+EOF
 fi

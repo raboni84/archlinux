@@ -47,7 +47,7 @@ DEFAULT arch
 LABEL arch
 LINUX arch/x86_64/vmlinuz-linux
 INITRD arch/intel-ucode.img,arch/amd-ucode.img,arch/x86_64/initramfs-linux.img
-APPEND archiso_nfs_srv=\${pxeserver}:/srv/nfs archisobasedir=arch copytoram=n
+APPEND archiso_nfs_srv=\${pxeserver}:/srv/nfs archisobasedir=arch copytoram=n cow_spacesize=80%
 IPAPPEND 3
 EOF
 sudo mkdir -p /srv/tftp/arch/x86_64
