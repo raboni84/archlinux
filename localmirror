@@ -25,6 +25,10 @@ else
   echo "Running as current user '$USER'"
 fi
 
+sudo tee /etc/hostname <<EOF
+archmirror
+EOF
+
 tee "$HOME/mirrorsync.sh" <<EOF
 #!/usr/bin/env bash
 

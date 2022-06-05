@@ -25,6 +25,10 @@ else
   echo "Running as current user '$USER'"
 fi
 
+sudo tee /etc/hostname <<EOF
+pxeserver
+EOF
+
 pacman_need syslinux dnsmasq nfs-utils
 
 sudo tee "/etc/systemd/network/20-wired.network" <<EOF
