@@ -120,7 +120,7 @@ tee -a /etc/pacman.conf <<EOF
 [aur]
 SigLevel = Optional DatabaseOptional
 Include = /etc/pacman.d/locallist
-Server = https://raboni84.github.io/\$repo/os/\$arch/
+Server = https://raboni84.github.io/\$repo/os/\$arch
 EOF
 sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf
 # resize tmpfs
@@ -186,7 +186,7 @@ tee -a /mnt/etc/pacman.conf <<EOF
 [aur]
 SigLevel = Optional DatabaseOptional
 Include = /etc/pacman.d/locallist
-Server = https://raboni84.github.io/\$repo/os/\$arch/
+Server = https://raboni84.github.io/\$repo/os/\$arch
 EOF
 sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 5/' /mnt/etc/pacman.conf
 tee "/mnt/usr/bin/mirror_update" <<EOF
