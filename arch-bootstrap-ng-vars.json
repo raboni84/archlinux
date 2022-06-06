@@ -13,5 +13,6 @@
     "mem_build": "2048",
     "mem_after": "256",
     "cpu_build": "2",
-    "cpu_after": "1"
+    "cpu_after": "1",
+    "localmirror": ""
 }

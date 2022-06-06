@@ -10,6 +10,7 @@
             "guest_additions_mode": "disable",
             "boot_wait": "1m",
             "boot_command": [
+                "echo -e '{{user `localmirror`}}' | tee /etc/pacman.d/localmirror<enter><wait2>",
                 "echo -e '{{user `prov_pass`}}\\n{{user `prov_pass`}}' | (passwd {{user `prov_user`}})<enter><wait2>"
             ],
             "disk_size": 131072,
@@ -135,6 +136,7 @@
             "guest_additions_mode": "disable",
             "boot_wait": "1m",
             "boot_command": [
+                "echo -e '{{user `localmirror`}}' | tee /etc/pacman.d/localmirror<enter><wait2>",
                 "echo -e '{{user `prov_pass`}}\\n{{user `prov_pass`}}' | (passwd {{user `prov_user`}})<enter><wait2>"
             ],
             "ssh_username": "{{user `prov_user`}}",

@@ -13,5 +13,6 @@
     "ovf_name": "../archlinux-{{user `stage`}}-console-{{user `date`}}-x86_64",
     "vbox_name": "{{user `id`}}",
     "mem_build": "4096",
-    "cpu_build": "4"
+    "cpu_build": "4",
+    "localmirror": ""
 }
