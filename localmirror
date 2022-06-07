@@ -52,7 +52,7 @@ fi
 for repo in \${SYNC_REPO[@]}; do
   repo=\$(echo "\$repo" | tr [:upper:] [:lower:])
   echo ">> Syncing \$repo to \$SYNC_FILES/\$repo" | tee -a "\$SYNC_LOGS/\$LOG_FILE"
-  rsync -rptlv --inplace --partial --append --delete \\
+  rsync -rptlv --inplace --partial --append --delete-delay \\
     --safe-links --copy-links "\$SYNC_SERVER/\$repo" \\
     "\$SYNC_FILES/" 2>&1 | tee -a "\$SYNC_LOGS/\$LOG_FILE"
   echo ">> Syncing \$repo done." | tee -a "\$SYNC_LOGS/\$LOG_FILE"
