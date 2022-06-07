@@ -109,17 +109,17 @@ systemctl disable reflector
 curl -s 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_status=on' | \
   sed -e 's/#Server/Server/g' | \
   tee /etc/pacman.d/mirrorlist
-# add locallist to pacman.conf
-touch /etc/pacman.d/locallist
-sed -i '/^\[core\]$/{N;s/^\[core\]\nInclude.*/[core]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
-sed -i '/^\[extra\]$/{N;s/^\[extra\]\nInclude.*/[extra]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
-sed -i '/^\[community\]$/{N;s/^\[community\]\nInclude.*/[community]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
-sed -i '/^#\?\[multilib\]$/{N;s/^#\?\[multilib\]\n#\?Include.*/[multilib]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
+# add localmirror to pacman.conf
+touch /etc/pacman.d/localmirror
+sed -i '/^\[core\]$/{N;s/^\[core\]\nInclude.*/[core]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
+sed -i '/^\[extra\]$/{N;s/^\[extra\]\nInclude.*/[extra]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
+sed -i '/^\[community\]$/{N;s/^\[community\]\nInclude.*/[community]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
+sed -i '/^#\?\[multilib\]$/{N;s/^#\?\[multilib\]\n#\?Include.*/[multilib]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /etc/pacman.conf
 tee -a /etc/pacman.conf <<EOF
 
 [aur]
 SigLevel = Optional DatabaseOptional
-Include = /etc/pacman.d/locallist
+Include = /etc/pacman.d/localmirror
 Server = https://raboni84.github.io/\$repo/os/\$arch
 EOF
 sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 5/' /etc/pacman.conf
@@ -176,16 +176,16 @@ sed -i 's/^#IgnorePkg.*/IgnorePkg   = sudo/' /mnt/etc/pacman.conf
 
 # enable multilib, custom-user-repo and fix the /mnt mirrorlist
 mkdir -p /mnt/etc/pacman.d
-cp /etc/pacman.d/locallist /mnt/etc/pacman.d/locallist
-sed -i '/^\[core\]$/{N;s/^\[core\]\nInclude.*/[core]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
-sed -i '/^\[extra\]$/{N;s/^\[extra\]\nInclude.*/[extra]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
-sed -i '/^\[community\]$/{N;s/^\[community\]\nInclude.*/[community]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
-sed -i '/^#\?\[multilib\]$/{N;s/^#\?\[multilib\]\n#\?Include.*/[multilib]\nInclude = \/etc\/pacman.d\/locallist\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
+cp /etc/pacman.d/localmirror /mnt/etc/pacman.d/localmirror
+sed -i '/^\[core\]$/{N;s/^\[core\]\nInclude.*/[core]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
+sed -i '/^\[extra\]$/{N;s/^\[extra\]\nInclude.*/[extra]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
+sed -i '/^\[community\]$/{N;s/^\[community\]\nInclude.*/[community]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
+sed -i '/^#\?\[multilib\]$/{N;s/^#\?\[multilib\]\n#\?Include.*/[multilib]\nInclude = \/etc\/pacman.d\/localmirror\nInclude = \/etc\/pacman.d\/mirrorlist/;}' /mnt/etc/pacman.conf
 tee -a /mnt/etc/pacman.conf <<EOF
 
 [aur]
 SigLevel = Optional DatabaseOptional
-Include = /etc/pacman.d/locallist
+Include = /etc/pacman.d/localmirror
 Server = https://raboni84.github.io/\$repo/os/\$arch
 EOF
 sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 5/' /mnt/etc/pacman.conf
