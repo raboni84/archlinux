@@ -81,7 +81,7 @@ Description=Run mirrorsync daily and on boot
 
 [Timer]
 OnBootSec=15min
-OnCalendar=*-*-* 00:57:00
+OnUnitInactiveSec=1h 57min
 
 [Install]
 WantedBy=timers.target
