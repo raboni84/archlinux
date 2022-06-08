@@ -14,5 +14,6 @@
     "vbox_name": "{{user `id`}}",
     "mem_build": "4096",
     "cpu_build": "4",
+    "bridge_adapter": "none",
     "localmirror": ""
 }
