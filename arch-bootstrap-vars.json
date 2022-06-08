@@ -14,5 +14,6 @@
     "mem_after": "2048",
     "cpu_build": "2",
     "cpu_after": "2",
+    "bridge_adapter": "none",
     "localmirror": ""
 }
