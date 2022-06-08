@@ -36,7 +36,7 @@ SYNC_HOME="\$(dirname \$(readlink -f "\$0"))/localmirror"
 SYNC_LOGS="\$SYNC_HOME/logs"
 SYNC_FILES="\$SYNC_HOME/files"
 SYNC_REPO=(core extra community multilib)
-SERVER_ARR="\$(curl -S 'https://archlinux.org/mirrors/status/json/' | jq -r '[.urls[] | select(.protocol == "rsync" and .completion_pct == 1 and .country_code == "DE" and .active)]')"
+SERVER_ARR="\$(curl -S 'https://archlinux.org/mirrors/status/tier/1/json/' | jq -r '[.urls[] | select(.protocol == "rsync" and .country_code == "DE" and .active)]')"
 SERVER_ARR_LEN="\$(echo -en \$SERVER_ARR | jq '. | length')"
 SERVER_SEL="\$(shuf -i1-\$SERVER_ARR_LEN -n1)"
 SYNC_SERVER="\$(echo -en \$SERVER_ARR | jq -r ".[\$SERVER_SEL].url")"
@@ -48,6 +48,11 @@ fi
 if [ ! -d "\$SYNC_FILES" ]; then
   mkdir -p "\$SYNC_FILES"
 fi
+
+(
+  echo ">> \$SERVER_ARR_LEN tier 1 servers in Germany"
+  echo ">> choosing mirror \$SYNC_SERVER"
+) | tee -a "\$SYNC_LOGS/\$LOG_FILE"
 
 for repo in \${SYNC_REPO[@]}; do
   repo=\$(echo "\$repo" | tr [:upper:] [:lower:])
