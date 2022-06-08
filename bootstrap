@@ -195,7 +195,7 @@ set -uo pipefail
 
 if [[ -f /usr/bin/jq ]]; then
   curl -sL 'https://archlinux.org/mirrors/status/json/' | \
-    jq -cr '[.urls[] | select(.active and .country_code=="DE" and .protocol=="https" and .completion_pct==1)] | sort_by(.score) | .[] | "# "+.details,"Server = "+.url+"\$repo/os/\$arch"' | \
+    jq -cr '[.urls[] | select(.active and .country_code=="DE" and .protocol=="https")] | sort_by(.score) | .[] | "# "+.details,"Server = "+.url+"\$repo/os/\$arch"' | \
     sudo tee /etc/pacman.d/mirrorlist
 else
   curl -sL 'https://archlinux.org/mirrorlist/?country=DE&protocol=https&use_mirror_status=on' | \
