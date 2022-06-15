@@ -36,7 +36,8 @@ ${device} [gpt]\n\
     ├─home     /home\n\
     ├─var      /var\n\
     ├─root     /root\n\
-    └─srv      /srv\n"
+    ├─srv      /srv\n\
+    └─opt      /opt\n"
   options=("yes" "no")
   select opt in "${options[@]}"
   do
@@ -123,6 +124,8 @@ mkdir -m750 /mnt/${data_id}/root /mnt/root
 mount -o rw,bind /mnt/${data_id}/root /mnt/root
 mkdir -m755 /mnt/${data_id}/srv /mnt/srv
 mount -o rw,bind /mnt/${data_id}/srv /mnt/srv
+mkdir -m755 /mnt/${data_id}/opt /mnt/opt
+mount -o rw,bind /mnt/${data_id}/opt /mnt/opt
 
 mkdir -m755 /mnt/etc
 genfstab -U -p /mnt > /mnt/etc/fstab
