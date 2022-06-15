@@ -165,6 +165,7 @@ fi
 )
 
 #### Install and configure the basic system ###
+pacman -Syy
 echo "" | (pacstrap -i /mnt base opendoas)
 ln -s /usr/bin/doas /mnt/usr/bin/sudo
 tee "/mnt/etc/doas.conf" <<EOF
