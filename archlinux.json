@@ -96,10 +96,12 @@
             "boot_wait": "30s",
             "boot_command": [
                 "{{user `opt_encrypt_pwd`}}<wait10><wait10><wait10>",
+                "<leftCtrlOn><leftAltOn><f2><leftAltOff><leftCtrlOff><wait2>",
                 "root<enter><wait2>toor<enter><wait5>",
                 "loadkezs us<enter><wait1>",
                 "sed -i 's/:wheel/nopass :wheel/' /etc/doas.conf<enter><wait2>",
-                "exit<enter><wait2>"
+                "exit<enter><wait2>",
+                "<leftCtrlOn><leftAltOn><f1><leftAltOff><leftCtrlOff><wait2>"
             ],
             "ssh_username": "{{user `prov_user`}}",
             "ssh_password": "{{user `prov_pass`}}",
