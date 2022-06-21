@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-set -uo pipefail
-set +o history
+set -u -o pipefail -o errtrace +o history
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
 yearmonthday=$(curl -sL "https://archlinux.org/download/" | xmllint --html --xpath '/html/body/div[2]/div[2]/ul[1]/li[1]/text()' - 2>/dev/null | xargs)

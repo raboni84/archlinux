@@ -1,9 +1,14 @@
 #!/bin/bash
 # WARNING: this script will destroy all data on the selected disk.
 
-set -uo pipefail
-set +o history
-trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+set -u -o pipefail -o errtrace +o history
+set_err_trap() {
+  trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+}
+unset_err_trap() {
+  trap - ERR
+}
+set_err_trap
 
 SCRIPT=`realpath "$0"`
 SCRIPTPATH=`dirname "$SCRIPT"`
@@ -12,14 +17,29 @@ SCRIPTPATH=`dirname "$SCRIPT"`
 exec 1> >(tee "/tmp/stdout.log")
 exec 2> >(tee "/tmp/stderr.log")
 
+retry() {
+  unset_err_trap
+  local -r -i max="$1"; shift
+  local -i num=1
+  $@
+  local rc=$?
+  while [ $rc -ne 0 ] && [ $num -lt $max ]; do
+    echo "attempt #$num failed."
+    sleep $((num++))
+    $@
+    local rc=$?
+  done
+  set_err_trap
+  return $rc
+}
 mnt_cmd() {
   arch-chroot /mnt $@
 }
 mnt_pacman_update() {
-  arch-chroot /mnt pacman -Syu --needed --noconfirm --color=auto $@
+  retry 3 arch-chroot /mnt pacman -Syu --needed --noconfirm --color=auto $@
 }
 mnt_pacman_need() {
-  arch-chroot /mnt pacman -S --needed --noconfirm --color=auto $@
+  retry 3 arch-chroot /mnt pacman -S --needed --noconfirm --color=auto $@
 }
 mnt_cmd_as_user() {
   local asuser="$1"

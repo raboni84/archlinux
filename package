@@ -1,14 +1,34 @@
 #!/bin/bash
 # Create pxe bootable setup from existing image
 
-set -uo pipefail
-set +o history
-trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+set -u -o pipefail -o errtrace +o history
+set_err_trap() {
+  trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+}
+unset_err_trap() {
+  trap - ERR
+}
+set_err_trap
 
 ### Set up logging ###
 exec 1> >(tee "/tmp/stdout.log")
 exec 2> >(tee "/tmp/stderr.log")
 
+retry() {
+  unset_err_trap
+  local -r -i max="$1"; shift
+  local -i num=1
+  $@
+  local rc=$?
+  while [ $rc -ne 0 ] && [ $num -lt $max ]; do
+    echo "attempt #$num failed."
+    sleep $((num++))
+    $@
+    local rc=$?
+  done
+  set_err_trap
+  return $rc
+}
 mnt_cmd() {
   arch-chroot /mnt $@
 }
@@ -129,8 +149,8 @@ if [[ ! -f /tmp/pxe/nfs/arch/x86_64/airootfs.sfs ]]; then
   mksquashfs /mnt /tmp/pxe/nfs/arch/x86_64/airootfs.sfs -comp xz -Xbcj x86 -b 1M -Xdict-size 1M -e /mnt/boot /mnt/data /mnt/lost+found /mnt/etc/fstab /mnt/etc/crypttab
 fi
 
-mnt_cmd pacman -Syy --noconfirm --color=auto
-mnt_cmd pacman -S --needed --noconfirm --color=auto syslinux arch-install-scripts archiso mkinitcpio mkinitcpio-archiso mkinitcpio-nfs-utils \
+retry 3 mnt_cmd pacman -Syy --noconfirm --color=auto
+retry 3 mnt_cmd pacman -S --needed --noconfirm --color=auto syslinux arch-install-scripts archiso mkinitcpio mkinitcpio-archiso mkinitcpio-nfs-utils \
   nbd curl pv amd-ucode intel-ucode
 
 if [[ ! -f /tmp/pxe/tftp/arch/x86_64/initramfs-linux.img ]]; then
