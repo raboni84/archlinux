@@ -62,7 +62,7 @@ IPMasquerade=ipv4
 
 [DHCPServer]
 PoolOffset=100
-PoolSize=1006
+PoolSize=100
 EmitDNS=yes
 EmitNTP=yes
 EmitRouter=yes
