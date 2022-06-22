@@ -151,7 +151,7 @@ GPUS=$(echo ${LSHARDWARE} | xmllint --xpath '//node[@class="display"]/vendor/tex
 devenv_install_package_rundeps() {
   pushd ~/.vscode/extensions/$1
     cat package.json \
-    | jq -c '.runtimeDependencies[] | select((.platforms[] | contains("linux")) and (.architectures[] | (contains("x86_64") or contains("x64"))))' \
+    | jq -c 'try .runtimeDependencies[] | select((.platforms[] | contains("linux")) and (.architectures[] | (contains("x86_64") or contains("x64"))))' \
     | while read -r line; do
       [ -z "$line" ] && continue
       DESCR=$(echo $line | jq -r '.description')
