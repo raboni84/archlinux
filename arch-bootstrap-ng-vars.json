@@ -14,5 +14,6 @@
     "mem_after": "256",
     "cpu_build": "2",
     "cpu_after": "1",
+    "intnet_name": "localdomain",
     "localmirror": ""
 }
