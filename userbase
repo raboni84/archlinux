@@ -153,6 +153,7 @@ devenv_install_package_rundeps() {
     cat package.json \
     | jq -c '.runtimeDependencies[] | select((.platforms[] | contains("linux")) and (.architectures[] | (contains("x86_64") or contains("x64"))))' \
     | while read -r line; do
+      [ -z "$line" ] && continue
       DESCR=$(echo $line | jq -r '.description')
       URL=$(echo $line | jq -r '.url')
       INSTPATH=$(echo $line | jq -r '.installPath')
@@ -163,11 +164,13 @@ devenv_install_package_rundeps() {
       pushd "$INSTPATH"
         # fix broken 'Windows' folders in zip
         for file in *\\*; do
-          target="${file//\\//}"
-          mkdir -p "${target%/*}"
-          mv -v "$file" "$target"
+          if [ -f "$file" ]; then
+            target="${file//\\//}"
+            mkdir -p "${target%/*}"
+            mv -v "$file" "$target"
+          fi
         done
-        echo $line | jq -r '.binaries[]' |
+        echo $line | jq -r 'try .binaries[]' |
           while read -r bins; do
             if [[ ! -z "$bins" ]] && [[ -f "$bins" ]]; then
               chmod 0755 "$bins"
