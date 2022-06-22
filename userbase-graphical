@@ -59,5 +59,4 @@ xdg-mime default xarchiver.desktop 'application/zip'
 xdg-mime default xarchiver.desktop 'application/vnd.ms-cab-compressed'
 
 # set xdg-settings default applications
-# BUG - not only xdg-utils is needed now, but also xdg-settings throws an error without message :-/
-#xdg-settings set default-web-browser firefox.desktop
+xdg-settings set default-web-browser firefox.desktop
