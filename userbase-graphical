@@ -4,9 +4,6 @@
 # graphical environment configured in userbase
 #
 
-aur llpp
-/usr/bin/rm -rf "$HOME/.local/build/llpp.aur"
-
 # wine first time startup
 wine wineboot -u
 tee "$HOME/.local/bin/wine32" <<EOF
@@ -27,7 +24,7 @@ xdg-mime default notepadqq.desktop 'text/x-php'
 xdg-mime default notepadqq.desktop 'text/x-c'
 xdg-mime default notepadqq.desktop 'text/x-c++'
 xdg-mime default libreoffice-calc.desktop 'text/x-csv'
-xdg-mime default llpp.desktop 'application/pdf'
+xdg-mime default firefox.desktop 'application/pdf'
 xdg-mime default xarchiver.desktop 'application/gzip'
 xdg-mime default xarchiver.desktop 'application/x-7z-compressed'
 xdg-mime default xarchiver.desktop 'application/x-7z-compressed-tar'
